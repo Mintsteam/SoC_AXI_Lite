@@ -1,0 +1,4 @@
+`define INST_ADDR_BUS 31:0
+`define INST_DATA_BUS 31:0
+`define INST_MEM_SIZE 131071
+`define INST_MEM_SIZE_WIDTH 17

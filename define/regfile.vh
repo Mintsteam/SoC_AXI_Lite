@@ -1,0 +1,8 @@
+`define REG_ADDR_BUS 4:0
+`define REG_DATA_BUS 31:0
+`define REG_WIDTH 32
+`define DOUBLE_REG_WIDTH 64
+`define DOUBLE_REG_BUS 63:0
+`define REG_NUM 32
+`define REG_ADDR_BUS_WIDTH 5
+`define NOP_REG_ADDR 5'b00000
