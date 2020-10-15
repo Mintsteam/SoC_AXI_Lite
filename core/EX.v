@@ -12,12 +12,12 @@ module EX(
 
     input wire[`REG_DATA_BUS] operand_1,
     input wire[`REG_DATA_BUS] operand_2,
-    input wire[`REG_ADDR_BUS] write_addr_i,
-    input wire write_en_i,
+    input wire[`REG_ADDR_BUS] reg_write_addr_i,
+    input wire reg_write_en_i,
 
-    output reg[`REG_DATA_BUS] write_data_o,
-    output reg[`REG_ADDR_BUS] write_addr_o,    
-    output reg write_en_o
+    output reg[`REG_DATA_BUS] reg_write_data_o,
+    output reg[`REG_ADDR_BUS] reg_write_addr_o,    
+    output reg reg_write_en_o
     
 );
 
@@ -36,13 +36,13 @@ module EX(
 
     always @ (*) 
     begin
-	    write_en_o <= write_en_i;	 	 	
-	    write_addr_o <= write_addr_i;
+	    reg_write_en_o <= reg_write_en_i;	 	 	
+	    reg_write_addr_o <= reg_write_addr_i;
 	    case (alu_sel) 
-            `EXE_RES_LOGIC:write_data_o <= logic_out;
+            `EXE_RES_LOGIC:reg_write_data_o <= logic_out;
             //`EXE_RES_SHIFT:wdata_o <= shiftres;	
 	 	    //`EXE_RES_MOVE:wdata_o <= moveres;
-	 	    default:write_data_o <= `ZEROWORD;
+	 	    default:reg_write_data_o <= `ZEROWORD;
 	    endcase
     end	
 

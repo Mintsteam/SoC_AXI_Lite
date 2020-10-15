@@ -4,24 +4,23 @@
 
 module MEM(
 
-    input wire clk,
     input wire rst,
 
-    input wire[`REG_DATA_BUS] write_data_i,
-    input wire[`REG_ADDR_BUS] write_addr_i,
-    input wire write_en_i,
+    input wire[`REG_DATA_BUS] reg_write_data_i,
+    input wire[`REG_ADDR_BUS] reg_write_addr_i,
+    input wire reg_write_en_i,
 
-    output reg[`REG_DATA_BUS] write_data_o,
-    output reg[`REG_ADDR_BUS] write_addr_o,
-    output reg write_en_o
+    output reg[`REG_DATA_BUS] reg_write_data_o,
+    output reg[`REG_ADDR_BUS] reg_write_addr_o,
+    output reg reg_write_en_o
 
 );
 
 	always @ (*) 
     begin
-        write_data_o <= rst ? 0 : write_data_i;        
-		write_addr_o <= rst ? 0 : write_addr_i;
-		write_en_o <= rst ? 0 : write_en_i;
+        reg_write_data_o <= rst ? 0 : reg_write_data_i;        
+		reg_write_addr_o <= rst ? 0 : reg_write_addr_i;
+		reg_write_en_o <= rst ? 0 : reg_write_en_i;
 		/*
 		hi_o<=rst?0:hi_i;
 		lo_o<=rst?0:lo_i;
