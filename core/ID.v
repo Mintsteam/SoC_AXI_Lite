@@ -112,41 +112,42 @@ module ID(
                 default:begin end
             endcase
 	    end         	
-        end
-        //operand_1_o acquire
-	    always @ (*) 
-        begin
-            if(rst) begin
-                operand_1_o <= `ZEROWORD;
-            end else if((reg_read_en_1_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_1_o)) begin
-                operand_1_o <= ex_reg_write_data_i;
-            end else if((reg_read_en_1_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_1_o)) begin
-                operand_1_o <= mem_reg_write_data_i;
-            end else if(reg_read_en_1_o == 1'b1) begin
-                operand_1_o <= reg_data_1_i;
-            end else if(reg_read_en_1_o == 1'b0) begin
-                operand_1_o <= imm;
-            end else begin
-                operand_1_o <= `ZEROWORD;
-            end
-        end
+    end    
 
-        //operand_2_o acquire
-	    always @ (*) 
-        begin
-            if(rst) begin
-                operand_2_o <= `ZEROWORD;
-            end else if((reg_read_en_2_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_2_o)) begin
-                operand_2_o <= ex_reg_write_data_i;
-            end else if((reg_read_en_2_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_2_o)) begin
-                operand_2_o <= mem_reg_write_data_i;    
-            end else if(reg_read_en_2_o == 1'b1) begin
-                operand_2_o <= reg_data_2_i;
-            end else if(reg_read_en_2_o == 1'b0) begin
-                operand_2_o <= imm;
-            end else begin
-                operand_2_o <= `ZEROWORD;
+    //operand_1_o acquire
+	always @ (*) 
+    begin
+        if(rst) begin
+            operand_1_o <= `ZEROWORD;
+        end else if((reg_read_en_1_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_1_o)) begin
+            operand_1_o <= ex_reg_write_data_i;
+        end else if((reg_read_en_1_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_1_o)) begin
+            operand_1_o <= mem_reg_write_data_i;
+        end else if(reg_read_en_1_o == 1'b1) begin
+            operand_1_o <= reg_data_1_i;
+        end else if(reg_read_en_1_o == 1'b0) begin
+            operand_1_o <= imm;
+        end else begin
+            operand_1_o <= `ZEROWORD;
         end
-	end
+    end
+
+    //operand_2_o acquire
+	always @ (*) 
+    begin
+        if(rst) begin
+            operand_2_o <= `ZEROWORD;
+        end else if((reg_read_en_2_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_2_o)) begin
+            operand_2_o <= ex_reg_write_data_i;
+        end else if((reg_read_en_2_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_2_o)) begin
+            operand_2_o <= mem_reg_write_data_i;    
+        end else if(reg_read_en_2_o == 1'b1) begin
+            operand_2_o <= reg_data_2_i;
+        end else if(reg_read_en_2_o == 1'b0) begin
+            operand_2_o <= imm;
+        end else begin
+            operand_2_o <= `ZEROWORD;
+        end
+    end
 
 endmodule

@@ -22,17 +22,28 @@ module EX(
 );
 
     reg[`REG_DATA_BUS] logic_out;
+    reg[`REG_DATA_BUS] shift_out;
 
     always @ (*) 
     begin
         case (alu_op_i)
             `EXE_OR_OP:logic_out <= rst ? 0 : operand_1_i | operand_2_i;
-            //`EXE_AND_OP:logic_out <= rst ? 0 : operand_1_i & operand_2_i;
-            //`EXE_NOR_OP:logic_out <= rst ? 0 : ~(operand_1_i | operand_2_i);
-            //`EXE_XOR_OP:logic_out <= rst ? 0 : operand_1_i ^ operand_2_i;
+            `EXE_AND_OP:logic_out <= rst ? 0 : operand_1_i & operand_2_i;
+            `EXE_NOR_OP:logic_out <= rst ? 0 : ~(operand_1_i | operand_2_i);
+            `EXE_XOR_OP:logic_out <= rst ? 0 : operand_1_i ^ operand_2_i;
             default:logic_out <= 0;
         endcase
 	end   
+
+    always @ (*)
+    begin
+        case (alu_op_i)
+            `EXE_SLL_OP:shift_out <= rst ? 0 : operand_2_i << operand_1_i[4:0];
+            `EXE_SRL_OP:shift_out <= rst ? 0 : operand_2_i >> operand_1_i[4:0];
+            `EXE_SRA_OP:shift_out <= rst ? 0 : ( { 32 { operand_2_i[31] } } << ( 6'd32 - { 1'b0, operand_1_i[4:0] } ) ) | operand_2_i>> operand_1_i[4:0];
+            default:shift_out <= 0;
+        endcase
+    end
 
     always @ (*) 
     begin
@@ -40,8 +51,8 @@ module EX(
 	    reg_write_addr_o <= reg_write_addr_i;
 	    case (alu_sel_i) 
             `EXE_RES_LOGIC:reg_write_data_o <= logic_out;
-            //`EXE_RES_SHIFT:wdata_o <= shiftres;	
-	 	    //`EXE_RES_MOVE:wdata_o <= moveres;
+            `EXE_RES_SHIFT:reg_write_data_o <= shift_out;	
+	 	    //`EXE_RES_MOVE:reg_write_data_o <= moveres;
 	 	    default:reg_write_data_o <= `ZEROWORD;
 	    endcase
     end	
