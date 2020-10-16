@@ -25,6 +25,16 @@ module ID(
     output reg[`REG_ADDR_BUS] reg_read_addr_2_o,    
     output reg reg_read_en_2_o,
 
+    //forwarding from ex
+    input wire ex_reg_write_en_i,
+    input wire[`REG_DATA_BUS] ex_reg_write_data_i,
+    input wire[`REG_ADDR_BUS] ex_reg_write_addr_i,
+
+    //forwarding from mem
+    input wire mem_reg_write_en_i,
+    input wire[`REG_DATA_BUS] mem_reg_write_data_i,
+    input wire[`REG_ADDR_BUS] mem_reg_write_addr_i,
+
     output reg[`ALU_OP_BUS] alu_op_o,
     output reg[`ALU_SEL_BUS] alu_sel_o,
     output reg[`REG_DATA_BUS] operand_1_o,
@@ -108,6 +118,10 @@ module ID(
         begin
             if(rst) begin
                 operand_1_o <= `ZEROWORD;
+            end else if((reg_read_en_1_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_1_o)) begin
+                operand_1_o <= ex_reg_write_data_i;
+            end else if((reg_read_en_1_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_1_o)) begin
+                operand_1_o <= mem_reg_write_data_i;
             end else if(reg_read_en_1_o == 1'b1) begin
                 operand_1_o <= reg_data_1_i;
             end else if(reg_read_en_1_o == 1'b0) begin
@@ -122,6 +136,10 @@ module ID(
         begin
             if(rst) begin
                 operand_2_o <= `ZEROWORD;
+            end else if((reg_read_en_2_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_2_o)) begin
+                operand_2_o <= ex_reg_write_data_i;
+            end else if((reg_read_en_2_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_2_o)) begin
+                operand_2_o <= mem_reg_write_data_i;    
             end else if(reg_read_en_2_o == 1'b1) begin
                 operand_2_o <= reg_data_2_i;
             end else if(reg_read_en_2_o == 1'b0) begin

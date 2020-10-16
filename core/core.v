@@ -108,6 +108,16 @@ module core(
         .reg_data_1_i(reg_read_data_1),
         .reg_data_2_i(reg_read_data_2),
 
+        //INPUT FROM EX (forwarding)
+        .ex_reg_write_en_i(ex_reg_write_en_o),
+        .ex_reg_write_data_i(ex_reg_write_data_o),
+        .ex_reg_write_addr_i(ex_reg_write_addr_o),
+
+        //INPUT FROM MEM (forwarding)
+        .mem_reg_write_en_i(mem_reg_write_en_o),
+        .mem_reg_write_data_i(mem_reg_write_data_o),
+        .mem_reg_write_addr_i(mem_reg_write_addr_o),
+
         //OUTPUT TO ID/EX 
         .alu_op_o(id_alu_op_o),
         .alu_sel_o(id_alu_sel_o),
@@ -175,7 +185,7 @@ module core(
         .reg_write_addr_i(ex_reg_write_addr_i),
         .reg_write_en_i(ex_reg_write_en_i),
 
-        //OUTPUT TO EX_MEM
+        //OUTPUT TO EX_MEM ,ID(forwarding)
         .reg_write_data_o(ex_reg_write_data_o),
         .reg_write_addr_o(ex_reg_write_addr_o),
         .reg_write_en_o(ex_reg_write_en_o)
