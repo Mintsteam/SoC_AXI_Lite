@@ -14,5 +14,14 @@
 `define CHIP_ENABLE 1'b1
 `define CHIP_DISABLE 1'b0
 
-//stage > components > operation > num
+//stage > component > operation > num
 //data > addr > en
+
+/*
+
+pipeline regs naming rules:
+
+INPUT: (last stage)_(component)_(op)_(data type by function)
+OUTPUT: (next_stage)_(component)_(op)_(data type by function)
+
+*/

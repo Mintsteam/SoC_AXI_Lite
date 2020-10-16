@@ -13,6 +13,16 @@ module PC(
 
     always @ (posedge clk)
     begin
+        if(rst == `RST_ENABLE)
+        begin
+            ce <= `CHIP_DISABLE;
+        end else begin
+            ce <= `CHIP_ENABLE;
+        end
+    end 
+
+    always @ (posedge clk)
+    begin
         ce <= ( rst ? `CHIP_DISABLE : `CHIP_ENABLE );
     end
 
@@ -20,5 +30,6 @@ module PC(
     begin
         pc <= ( ce == `CHIP_DISABLE ? `ZEROWORD : pc + 4'h4 );
     end
+    
 
 endmodule

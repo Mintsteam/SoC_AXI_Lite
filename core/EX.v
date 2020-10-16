@@ -7,11 +7,11 @@ module EX(
 
     input wire rst,
 
-    input wire[`ALU_OP_BUS] alu_op,
-    input wire[`ALU_SEL_BUS] alu_sel,
+    input wire[`ALU_OP_BUS] alu_op_i,
+    input wire[`ALU_SEL_BUS] alu_sel_i,
 
-    input wire[`REG_DATA_BUS] operand_1,
-    input wire[`REG_DATA_BUS] operand_2,
+    input wire[`REG_DATA_BUS] operand_1_i,
+    input wire[`REG_DATA_BUS] operand_2_i,
     input wire[`REG_ADDR_BUS] reg_write_addr_i,
     input wire reg_write_en_i,
 
@@ -25,11 +25,11 @@ module EX(
 
     always @ (*) 
     begin
-        case (alu_op)
-            `EXE_OR_OP:logic_out <= rst ? 0 : operand_1 | operand_2;
-            //`EXE_AND_OP:logic_out <= rst ? 0 : operand_1 & operand_2;
-            //`EXE_NOR_OP:logic_out <= rst ? 0 : ~(operand_1 | operand_2);
-            //`EXE_XOR_OP:logic_out <= rst ? 0 : operand_1 ^ operand_2;
+        case (alu_op_i)
+            `EXE_OR_OP:logic_out <= rst ? 0 : operand_1_i | operand_2_i;
+            //`EXE_AND_OP:logic_out <= rst ? 0 : operand_1_i & operand_2_i;
+            //`EXE_NOR_OP:logic_out <= rst ? 0 : ~(operand_1_i | operand_2_i);
+            //`EXE_XOR_OP:logic_out <= rst ? 0 : operand_1_i ^ operand_2_i;
             default:logic_out <= 0;
         endcase
 	end   
@@ -38,7 +38,7 @@ module EX(
     begin
 	    reg_write_en_o <= reg_write_en_i;	 	 	
 	    reg_write_addr_o <= reg_write_addr_i;
-	    case (alu_sel) 
+	    case (alu_sel_i) 
             `EXE_RES_LOGIC:reg_write_data_o <= logic_out;
             //`EXE_RES_SHIFT:wdata_o <= shiftres;	
 	 	    //`EXE_RES_MOVE:wdata_o <= moveres;

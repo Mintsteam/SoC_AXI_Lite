@@ -7,17 +7,17 @@ module REGFILE(
     input wire clk,
     input wire rst,
 
-    input wire write_en,
-    input wire[`REG_DATA_BUS] write_data,    
-    input wire[`REG_ADDR_BUS] write_addr,
+    input wire write_en_i,
+    input wire[`REG_DATA_BUS] write_data_i,    
+    input wire[`REG_ADDR_BUS] write_addr_i,
 
-    input wire read_en_1,
-    input wire[`REG_ADDR_BUS] read_addr_1,
-    output reg[`REG_DATA_BUS] read_data_1,
+    input wire read_en_1_i,
+    input wire[`REG_ADDR_BUS] read_addr_1_i,
+    input wire read_en_2_i,
+    input wire[`REG_ADDR_BUS] read_addr_2_i,
 
-    input wire read_en_2,
-    input wire[`REG_ADDR_BUS] read_addr_2,
-    output reg[`REG_DATA_BUS] read_data_2
+    output reg[`REG_DATA_BUS] read_data_1_o,
+    output reg[`REG_DATA_BUS] read_data_2_o
 
 );
 
@@ -28,9 +28,9 @@ module REGFILE(
     begin
         if(!rst)
         begin
-            if((write_en) && (write_addr != `REG_ADDR_BUS_WIDTH'h0))
+            if((write_en_i) && (write_addr_i != `REG_ADDR_BUS_WIDTH'h0))
             begin
-                regs[write_addr] <= write_data;
+                regs[write_addr_i] <= write_data_i;
             end
         end else begin
             regs[0] <= 0; regs[1] <= 0; regs[2] <= 0;
@@ -52,16 +52,16 @@ module REGFILE(
     begin
         if(rst)
         begin
-            read_data_1 <= `ZEROWORD;
-        end else if(read_en_1 && read_addr_1 == `REG_ADDR_BUS_WIDTH'h0)
+            read_data_1_o <= `ZEROWORD;
+        end else if(read_en_1_i && read_addr_1_i == `REG_ADDR_BUS_WIDTH'h0)
         begin
-            read_data_1 <= `ZEROWORD;
-        end else if(read_en_1 && write_en && read_addr_1 == write_addr) begin
-            read_data_1 <= write_data;
-        end else if(read_en_1) begin
-            read_data_1 <= regs[read_addr_1];
+            read_data_1_o <= `ZEROWORD;
+        end else if(read_en_1_i && write_en_i && read_addr_1_i == write_addr_i) begin
+            read_data_1_o <= write_data_i;
+        end else if(read_en_1_i) begin
+            read_data_1_o <= regs[read_addr_1_i];
         end else begin
-            read_data_1 <= `ZEROWORD;
+            read_data_1_o <= `ZEROWORD;
         end
     end
 
@@ -70,16 +70,16 @@ module REGFILE(
     begin
         if(rst)
         begin
-            read_data_2 <= `ZEROWORD;
-        end else if(read_en_2 && read_addr_2 == `REG_ADDR_BUS_WIDTH'h0)
+            read_data_2_o <= `ZEROWORD;
+        end else if(read_en_2_i && read_addr_2_i == `REG_ADDR_BUS_WIDTH'h0)
         begin
-            read_data_2 <= `ZEROWORD;
-        end else if(read_en_2 && write_en && read_addr_2 == write_addr) begin
-            read_data_2 <= write_data;
-        end else if(read_en_2) begin
-            read_data_2 <= regs[read_addr_2];
+            read_data_2_o <= `ZEROWORD;
+        end else if(read_en_2_i && write_en_i && read_addr_2_i == write_addr_i) begin
+            read_data_2_o <= write_data_i;
+        end else if(read_en_2_i) begin
+            read_data_2_o <= regs[read_addr_2_i];
         end else begin
-            read_data_2 <= `ZEROWORD;
+            read_data_2_o <= `ZEROWORD;
         end
     end
 

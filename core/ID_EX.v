@@ -33,7 +33,7 @@ module ID_EX(
         ex_reg_data_1 <= rst ? 0 :id_reg_data_1;
         ex_reg_data_2 <= rst ? 0 : id_reg_data_2;
         ex_reg_write_addr <= rst ? 0 : id_reg_write_addr;
-        ex_reg_write_addr <= rst ? 0 : id_reg_write_en;	
+        ex_reg_write_en <= rst ? 0 : id_reg_write_en;	
     end
 
 endmodule
