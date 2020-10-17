@@ -11,9 +11,17 @@ module MEM_WB(
     input wire[`REG_ADDR_BUS] mem_reg_write_addr,
     input wire mem_reg_write_en,
 
+    input wire[`REG_DATA_BUS] mem_hi_write_data,
+    input wire[`REG_DATA_BUS] mem_lo_write_data,
+    input wire mem_hilo_write_en,
+
     output reg[`REG_DATA_BUS] wb_reg_write_data,    
     output reg[`REG_ADDR_BUS] wb_reg_write_addr,
-    output reg wb_reg_write_en
+    output reg wb_reg_write_en,
+
+    output reg[`REG_DATA_BUS] wb_hi_write_data,
+    output reg[`REG_DATA_BUS] wb_lo_write_data,
+    output reg wb_hilo_write_en
 
 );
 
@@ -23,11 +31,9 @@ module MEM_WB(
         wb_reg_write_data <= rst ? 0 : mem_reg_write_data;        
 		wb_reg_write_addr <= rst ? 0 : mem_reg_write_addr;
 		wb_reg_write_en <= rst ? 0 : mem_reg_write_en;
-		/*
-		wb_hi<=rst?0:mem_hi;
-		wb_lo<=rst?0:mem_lo;
-		wb_whilo<=rst?0:mem_whilo;
-        */
+		wb_hi_write_data <= rst ? 0 : mem_hi_write_data;
+		wb_lo_write_data <= rst ? 0 : mem_lo_write_data;
+		wb_hilo_write_en <= rst ? 0 : mem_hilo_write_en;
 	end     
 
 endmodule

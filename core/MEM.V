@@ -10,9 +10,17 @@ module MEM(
     input wire[`REG_ADDR_BUS] reg_write_addr_i,
     input wire reg_write_en_i,
 
+    input wire[`REG_DATA_BUS] hi_write_data_i,
+    input wire[`REG_DATA_BUS] lo_write_data_i,
+    input wire hilo_write_en_i,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,
-    output reg reg_write_en_o
+    output reg reg_write_en_o,
+
+    output reg[`REG_DATA_BUS] hi_write_data_o,
+    output reg[`REG_DATA_BUS] lo_write_data_o,
+    output reg hilo_write_en_o
 
 );
 
@@ -21,11 +29,9 @@ module MEM(
         reg_write_data_o <= rst ? 0 : reg_write_data_i;        
 		reg_write_addr_o <= rst ? 0 : reg_write_addr_i;
 		reg_write_en_o <= rst ? 0 : reg_write_en_i;
-		/*
-		hi_o<=rst?0:hi_i;
-		lo_o<=rst?0:lo_i;
-		whilo_o<=rst?0:whilo_i;
-        */
+		hi_write_data_o <= rst ? 0 : hi_write_data_i;
+		lo_write_data_o <= rst ? 0 : lo_write_data_i;
+		hilo_write_en_o <= rst ? 0 : hilo_write_en_i;
 	end    
 
 endmodule

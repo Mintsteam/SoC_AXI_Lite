@@ -39,21 +39,33 @@ module core(
     wire ex_reg_write_en_o;
     wire[`REG_ADDR_BUS] ex_reg_write_addr_o;
     wire[`REG_DATA_BUS] ex_reg_write_data_o;
+    wire ex_hilo_write_en_o;
+    wire[`REG_DATA_BUS] ex_hi_write_data_o;
+    wire[`REG_DATA_BUS] ex_lo_write_data_o;
 
     //connect EX_MEM with MEM
     wire mem_reg_write_en_i;
     wire[`REG_ADDR_BUS] mem_reg_write_addr_i;
     wire[`REG_DATA_BUS] mem_reg_write_data_i;
+    wire mem_hilo_write_en_i;
+    wire[`REG_DATA_BUS] mem_hi_write_data_i;
+    wire[`REG_DATA_BUS] mem_lo_write_data_i;
 
     //connect MEM with MEM_WB
     wire mem_reg_write_en_o;
     wire[`REG_ADDR_BUS] mem_reg_write_addr_o;
     wire[`REG_DATA_BUS] mem_reg_write_data_o;
+    wire mem_hilo_write_en_o;
+    wire[`REG_DATA_BUS] mem_hi_write_data_o;
+    wire[`REG_DATA_BUS] mem_lo_write_data_o;
 
     //connect MEM_WB with WB
     wire wb_reg_write_en_i;
     wire[`REG_ADDR_BUS] wb_reg_write_addr_i;
     wire[`REG_DATA_BUS] wb_reg_write_data_i;
+    wire wb_hilo_write_en_i;
+    wire[`REG_DATA_BUS] wb_hi_write_data_i;
+    wire[`REG_DATA_BUS] wb_lo_write_data_i;
 
     //connect ID with REGFIE
     wire reg_read_en_1;
@@ -62,6 +74,10 @@ module core(
     wire[`REG_DATA_BUS] reg_read_data_2;
     wire[`REG_ADDR_BUS] reg_read_addr_1;
     wire[`REG_ADDR_BUS] reg_read_addr_2;
+
+    //connect HILO with EX
+    wire[`REG_DATA_BUS] hi_read_data_o;
+    wire[`REG_DATA_BUS] lo_read_data_o;
 
     PC PC0(
 
@@ -185,10 +201,29 @@ module core(
         .reg_write_addr_i(ex_reg_write_addr_i),
         .reg_write_en_i(ex_reg_write_en_i),
 
-        //OUTPUT TO EX_MEM ,ID(forwarding)
+        //INPUT FROM HILO
+        .hi_read_data_i(hi_read_data_o),
+        .lo_read_data_i(lo_read_data_o),
+
+        //INPUT FROM MEM (forwarding)
+        .mem_hi_write_data_i(mem_hi_write_data_o),
+        .mem_lo_write_data_i(mem_lo_write_data_o),
+        .mem_hilo_write_en_i(mem_hilo_write_en_o),
+
+        //INPUT FROM WB (forwarding)
+        .wb_hi_write_data_i(wb_hi_write_data_i),
+        .wb_lo_write_data_i(wb_lo_write_data_i),
+        .wb_hilo_write_en_i(wb_hilo_write_en_i),
+
+        //OUTPUT TO EX_MEM,ID(forwarding)
         .reg_write_data_o(ex_reg_write_data_o),
         .reg_write_addr_o(ex_reg_write_addr_o),
-        .reg_write_en_o(ex_reg_write_en_o)
+        .reg_write_en_o(ex_reg_write_en_o),
+
+        //OUTPUT TO EX_MEM
+        .hi_write_data_o(ex_hi_write_data_o),
+        .lo_write_data_o(ex_lo_write_data_o),
+        .hilo_write_en_o(ex_hilo_write_en_o)
 
     );
 
@@ -201,11 +236,17 @@ module core(
         .ex_reg_write_data(ex_reg_write_data_o),
         .ex_reg_write_addr(ex_reg_write_addr_o),
         .ex_reg_write_en(ex_reg_write_en_o),
+        .ex_hi_write_data(ex_hi_write_data_o),
+        .ex_lo_write_data(ex_lo_write_data_o),
+        .ex_hilo_write_en(ex_hilo_write_en_o),
 
         //OUTPUT TO MEM
         .mem_reg_write_data(mem_reg_write_data_i),
         .mem_reg_write_addr(mem_reg_write_addr_i),
-        .mem_reg_write_en(mem_reg_write_en_i)
+        .mem_reg_write_en(mem_reg_write_en_i),
+        .mem_hi_write_data(mem_hi_write_data_i),
+        .mem_lo_write_data(mem_lo_write_data_i),
+        .mem_hilo_write_en(mem_hilo_write_en_i)
 
     );
 
@@ -217,11 +258,19 @@ module core(
         .reg_write_data_i(mem_reg_write_data_i),
         .reg_write_addr_i(mem_reg_write_addr_i),
         .reg_write_en_i(mem_reg_write_en_i),
+        .hi_write_data_i(mem_hi_write_data_i),
+        .lo_write_data_i(mem_lo_write_data_i),
+        .hilo_write_en_i(mem_hilo_write_en_i),
 
         //OUTPUT TO MEM_WB
         .reg_write_data_o(mem_reg_write_data_o),
         .reg_write_addr_o(mem_reg_write_addr_o),
-        .reg_write_en_o(mem_reg_write_en_o)
+        .reg_write_en_o(mem_reg_write_en_o),
+
+        //OUTPUT TO MEM_WB,EX(forwarding)
+        .hi_write_data_o(mem_hi_write_data_o),
+        .lo_write_data_o(mem_lo_write_data_o),
+        .hilo_write_en_o(mem_hilo_write_en_o)
 
     );
 
@@ -234,11 +283,35 @@ module core(
         .mem_reg_write_data(mem_reg_write_data_o),
         .mem_reg_write_addr(mem_reg_write_addr_o),
         .mem_reg_write_en(mem_reg_write_en_o),
+        .mem_hi_write_data(mem_hi_write_data_o),
+        .mem_lo_write_data(mem_lo_write_data_o),
+        .mem_hilo_write_en(mem_hilo_write_en_o),
 
         //OUTPUT TO WB
         .wb_reg_write_data(wb_reg_write_data_i),
         .wb_reg_write_addr(wb_reg_write_addr_i),
-        .wb_reg_write_en(wb_reg_write_en_i)
+        .wb_reg_write_en(wb_reg_write_en_i),
+
+        //OUTPUT TO WB,EX(forwarding)
+        .wb_hi_write_data(wb_hi_write_data_i),
+        .wb_lo_write_data(wb_lo_write_data_i),
+        .wb_hilo_write_en(wb_hilo_write_en_i)
+
+    );
+
+    HILO HILO0(
+
+        .clk(clk),
+        .rst(rst),
+
+        //INPUT FROM MEM_WB
+        .hi_write_data_i(wb_hi_write_data_i),
+        .lo_write_data_i(wb_lo_write_data_i),
+        .hilo_write_en(wb_hilo_write_en_i),
+
+        //OUTPUT TO EX
+        .hi_read_data_o(hi_read_data_o),
+        .lo_read_data_o(lo_read_data_o)
 
     );
 
