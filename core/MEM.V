@@ -14,6 +14,8 @@ module MEM(
     input wire[`REG_DATA_BUS] lo_write_data_i,
     input wire hilo_write_en_i,
 
+    input wire[5:0] stall,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,
     output reg reg_write_en_o,
@@ -24,6 +26,7 @@ module MEM(
 
 );
 
+    /*
 	always @ (*) 
     begin
         reg_write_data_o <= rst ? 0 : reg_write_data_i;        
@@ -33,5 +36,25 @@ module MEM(
 		lo_write_data_o <= rst ? 0 : lo_write_data_i;
 		hilo_write_en_o <= rst ? 0 : hilo_write_en_i;
 	end    
+    */
+
+    always @ (*) begin
+		if(rst == `RST_ENABLE) 
+        begin
+			reg_write_addr_o <= `NOP_REG_ADDR;
+			reg_write_en_o <= `WRITE_DISABLE;
+		    reg_write_data_o <= `ZEROWORD;
+		    hi_write_data_o <= `ZEROWORD;
+		    lo_write_data_o <= `ZEROWORD;
+		    hilo_write_en_o <= `WRITE_DISABLE;		  
+		end else begin
+		    reg_write_addr_o <= reg_write_addr_i;
+			reg_write_en_o <= reg_write_en_i;
+			reg_write_data_o <= reg_write_data_i;
+			hi_write_data_o <= hi_write_data_i;
+			lo_write_data_o <= lo_write_data_i;
+			hilo_write_en_o <= hilo_write_en_i;			
+		end    
+	end      
 
 endmodule

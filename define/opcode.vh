@@ -97,9 +97,9 @@
 
 `define EXE_SPECIAL_INST 6'b000000
 `define EXE_REGIMM_INST 6'b000001
-`define EXE_SPECIAL2_INST 6'b011100
+`define EXE_SPECIAL_INST_2 6'b011100
 
-//AluOp
+//ALU_OP
 `define EXE_AND_OP   8'b00100100
 `define EXE_OR_OP    8'b00100101
 `define EXE_XOR_OP  8'b00100110
@@ -199,7 +199,7 @@
 
 `define EXE_NOP_OP    8'b00000000
 
-//AluSel
+//ALU_SEL
 `define EXE_RES_LOGIC 3'b001
 `define EXE_RES_SHIFT 3'b010
 `define EXE_RES_MOVE 3'b011	
