@@ -13,7 +13,7 @@
 `define FALSE 1'b0
 `define CHIP_ENABLE 1'b1
 `define CHIP_DISABLE 1'b0
-`define STOP 1'b0
+`define STOP 1'b1
 `define NOT_STOP 1'b0
 
 //stage > component > operation > num

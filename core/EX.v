@@ -28,6 +28,8 @@ module EX(
     input wire[`REG_DATA_BUS] wb_lo_write_data_i,
     input wire wb_hilo_write_en_i,
 
+    input wire[`DOUBLE_REG_DATA_BUS] hilo_temp_i,
+    input wire[1:0] count_i,
 
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,    
@@ -37,7 +39,10 @@ module EX(
     output reg[`REG_DATA_BUS] lo_write_data_o,
     output reg hilo_write_en_o,
     
-    output reg stall_req
+    output reg stall_req,
+
+    output reg[`DOUBLE_REG_DATA_BUS] hilo_temp_o,
+    output reg[1:0] count_o
 
 );
 
@@ -47,7 +52,9 @@ module EX(
     reg[`REG_DATA_BUS] hi_out;
     reg[`REG_DATA_BUS] lo_out;
     reg[`DOUBLE_REG_DATA_BUS] mul_out;
-    reg [`REG_DATA_BUS] arithmetic_out;
+    reg[`REG_DATA_BUS] arithmetic_out;
+    reg[`DOUBLE_REG_DATA_BUS] hilo_temp1;
+    reg madd_msub_stall_req;
 
     wire overflow;
     wire equal;
@@ -131,18 +138,19 @@ module EX(
         end
     end
 
-    assign operand_multiplicand = (((alu_op_i == `EXE_MUL_OP) || (alu_op_i == `EXE_MULT_OP)) && (operand_1_i[31] ==1'b1)) ? (~operand_1_i + 1) : operand_1_i;
+    assign operand_multiplicand = (((alu_op_i == `EXE_MUL_OP) || (alu_op_i == `EXE_MULT_OP) || (alu_op_i == `EXE_MADD_OP) || (alu_op_i == `EXE_MSUB_OP)) && (operand_1_i[31] == 1'b1)) ? (~operand_1_i + 1) : operand_1_i;
 
-    assign operand_multiplier = (((alu_op_i == `EXE_MUL_OP) || (alu_op_i == `EXE_MULT_OP)) && (operand_2_i[31] ==1'b1)) ? (~operand_2_i + 1) : operand_2_i;
+    assign operand_multiplier = (((alu_op_i == `EXE_MUL_OP) || (alu_op_i == `EXE_MULT_OP) || (alu_op_i == `EXE_MADD_OP) || (alu_op_i == `EXE_MSUB_OP)) && (operand_2_i[31] == 1'b1)) ? (~operand_2_i + 1) : operand_2_i;
     
     assign hilo_temp = operand_multiplicand * operand_multiplier;
 
+    //generate the result of multiply
     always @ (*) 
     begin
         if(rst == `RST_ENABLE) 
         begin
             mul_out <= {`ZEROWORD, `ZEROWORD};
-        end else if((alu_op_i == `EXE_MULT_OP) || (alu_op_i == `EXE_MUL_OP)) begin
+        end else if((alu_op_i == `EXE_MULT_OP) || (alu_op_i == `EXE_MUL_OP) || (alu_op_i == `EXE_MADD_OP) || (alu_op_i == `EXE_MSUB_OP)) begin
             if(operand_1_i[31] ^ operand_2_i == 1'b1) 
             begin
                 mul_out <= ~hilo_temp + 1;
@@ -152,6 +160,58 @@ module EX(
         end else begin
             mul_out <= hilo_temp;
         end
+    end
+
+    //execute multiadd instructions
+    always @ (*)
+    begin
+        if(rst == `RST_ENABLE)
+        begin
+            hilo_temp_o <= {`ZEROWORD, `ZEROWORD};
+            count_o <= 2'b00;
+            madd_msub_stall_req <= `NOT_STOP;
+        end else begin
+            case(alu_op_i) 
+				`EXE_MADD_OP, `EXE_MADDU_OP: begin
+					if(count_i == 2'b00) 
+                    begin
+						hilo_temp_o <= mul_out;
+						count_o <= 2'b01;
+						madd_msub_stall_req <= `STOP;
+						hilo_temp1 <= {`ZEROWORD,`ZEROWORD};
+					end else if(count_i == 2'b01) begin
+						hilo_temp_o <= {`ZEROWORD,`ZEROWORD};						
+						count_o <= 2'b10;
+						hilo_temp1 <= hilo_temp_i + {hi_out, lo_out};
+						madd_msub_stall_req <= `NOT_STOP;
+					end
+				end
+				`EXE_MSUB_OP, `EXE_MSUBU_OP: begin
+					if(count_i == 2'b00) 
+                    begin
+						hilo_temp_o <=  ~mul_out + 1 ;
+						count_o <= 2'b01;
+						madd_msub_stall_req <= `STOP;
+                        hilo_temp1 <= {`ZEROWORD,`ZEROWORD};
+					end else if(count_i == 2'b01)begin
+						hilo_temp_o <= {`ZEROWORD,`ZEROWORD};						
+						count_o <= 2'b10;
+						hilo_temp1 <= hilo_temp_i + {hi_out, lo_out};
+						madd_msub_stall_req <= `NOT_STOP;
+					end				
+				end
+				default: begin
+					hilo_temp_o <= {`ZEROWORD,`ZEROWORD};
+					count_o <= 2'b00;
+					madd_msub_stall_req <= `NOT_STOP;				
+				end
+			endcase
+        end
+    end 
+
+    always @ (*)
+    begin
+        stall_req = madd_msub_stall_req;
     end
 
     //execute logic instructions
@@ -220,6 +280,14 @@ module EX(
             hilo_write_en_o <= `WRITE_DISABLE;
             hi_write_data_o <= `ZEROWORD;
             lo_write_data_o <= `ZEROWORD;
+        end else if((alu_op_i == `EXE_MSUB_OP) || (alu_op_i == `EXE_MSUBU_OP)) begin
+            hilo_write_en_o <= `WRITE_ENABLE;
+            hi_write_data_o <= hilo_temp1[63:32];
+            lo_write_data_o <= hilo_temp1[31:0]; 
+        end else if((alu_op_i == `EXE_MADD_OP) || (alu_op_i == `EXE_MADDU_OP)) begin
+            hilo_write_en_o <= `WRITE_ENABLE;
+            hi_write_data_o <= hilo_temp1[63:32];
+            lo_write_data_o <= hilo_temp1[31:0]; 
         end else if((alu_op_i == `EXE_MULT_OP) || (alu_op_i == `EXE_MULTU_OP)) begin
             hilo_write_en_o <= `WRITE_ENABLE;
             hi_write_data_o <= mul_out[63:32];

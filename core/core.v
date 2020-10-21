@@ -42,6 +42,8 @@ module core(
     wire ex_hilo_write_en_o;
     wire[`REG_DATA_BUS] ex_hi_write_data_o;
     wire[`REG_DATA_BUS] ex_lo_write_data_o;
+    wire[1:0] ex_count_o;
+    wire[`DOUBLE_REG_DATA_BUS] ex_hilo_temp_o;
 
     //connect EX_MEM with MEM
     wire mem_reg_write_en_i;
@@ -79,10 +81,24 @@ module core(
     wire[`REG_DATA_BUS] hi_read_data_o;
     wire[`REG_DATA_BUS] lo_read_data_o;
 
+    //connect CTRL with pipeline regs
+    wire[5:0] stall;
+
+    //connect CTRL with ID,EX
+    wire id_stall_req;
+    wire ex_stall_req;
+
+    //connect EX_MEM to EX
+    wire[1:0] ex_mem_count_o;
+    wire[`DOUBLE_REG_DATA_BUS] ex_mem_hilo_o;
+
     PC PC0(
 
         .clk(clk),
         .rst(rst),
+
+        //INPUT FROM CTRL
+        .stall(stall),
         
         //OUTPUT TO IF_ID
         .pc(pc),
@@ -100,6 +116,9 @@ module core(
         //INPUT FROM PC
         .if_pc(pc),
         .if_inst(rom_data_i),
+
+        //INPUT FROM CTRL
+        .stall(stall),
 
         //OUTPUT TO ID
         .id_pc(id_pc_o),
@@ -140,7 +159,10 @@ module core(
         .operand_1_o(id_operand_1_o),
         .operand_2_o(id_operand_2_o),
         .reg_write_addr_o(id_reg_write_addr_o),
-        .reg_write_en_o(id_reg_write_en_o)
+        .reg_write_en_o(id_reg_write_en_o),
+
+        //OUTPUT TO CTRL
+        .stall_req(id_stall_req)
 
     );
 
@@ -179,6 +201,9 @@ module core(
         .id_reg_write_addr(id_reg_write_addr_o),
         .id_reg_write_en(id_reg_write_en_o),
 
+        //INPUT FROM CTRL
+        .stall(stall),
+
         //OUTPUT TO EX
         .ex_alu_op(ex_alu_op_i),
         .ex_alu_sel(ex_alu_sel_i),
@@ -215,6 +240,10 @@ module core(
         .wb_lo_write_data_i(wb_lo_write_data_i),
         .wb_hilo_write_en_i(wb_hilo_write_en_i),
 
+        //INPUT FROM EX_MEM
+        .count_i(ex_mem_count_o),
+        .hilo_temp_i(ex_mem_hilo_o),
+
         //OUTPUT TO EX_MEM,ID(forwarding)
         .reg_write_data_o(ex_reg_write_data_o),
         .reg_write_addr_o(ex_reg_write_addr_o),
@@ -223,7 +252,12 @@ module core(
         //OUTPUT TO EX_MEM
         .hi_write_data_o(ex_hi_write_data_o),
         .lo_write_data_o(ex_lo_write_data_o),
-        .hilo_write_en_o(ex_hilo_write_en_o)
+        .hilo_write_en_o(ex_hilo_write_en_o),
+        .count_o(ex_count_o),
+        .hilo_temp_o(ex_hilo_temp_o),
+
+        //OUTPUT TO CTRL
+        .stall_req(ex_stall_req)
 
     );
 
@@ -239,6 +273,11 @@ module core(
         .ex_hi_write_data(ex_hi_write_data_o),
         .ex_lo_write_data(ex_lo_write_data_o),
         .ex_hilo_write_en(ex_hilo_write_en_o),
+        .count_i(ex_count_o),
+        .hilo_i(ex_hilo_temp_o),
+
+        //INPUT FROM CTRL
+        .stall(stall),
 
         //OUTPUT TO MEM
         .mem_reg_write_data(mem_reg_write_data_i),
@@ -246,7 +285,11 @@ module core(
         .mem_reg_write_en(mem_reg_write_en_i),
         .mem_hi_write_data(mem_hi_write_data_i),
         .mem_lo_write_data(mem_lo_write_data_i),
-        .mem_hilo_write_en(mem_hilo_write_en_i)
+        .mem_hilo_write_en(mem_hilo_write_en_i),
+
+        //OUTPUT TO EX
+        .count_o(ex_mem_count_o),
+        .hilo_o(ex_mem_hilo_o)
 
     );
 
@@ -287,6 +330,9 @@ module core(
         .mem_lo_write_data(mem_lo_write_data_o),
         .mem_hilo_write_en(mem_hilo_write_en_o),
 
+        //INPUT FROM CTRL
+        .stall(stall),
+
         //OUTPUT TO WB
         .wb_reg_write_data(wb_reg_write_data_i),
         .wb_reg_write_addr(wb_reg_write_addr_i),
@@ -312,6 +358,21 @@ module core(
         //OUTPUT TO EX
         .hi_read_data_o(hi_read_data_o),
         .lo_read_data_o(lo_read_data_o)
+
+    );
+
+    CTRL CTRL0(
+
+        .rst(rst),
+
+        //INPUT FROM ID
+        .id_stall_req(id_stall_req),
+
+        //INPUT FROM EX
+        .ex_stall_req(ex_stall_req),
+
+        //OUTPUT
+        .stall(stall)
 
     );
 

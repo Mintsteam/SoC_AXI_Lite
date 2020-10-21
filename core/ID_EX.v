@@ -52,14 +52,7 @@ module ID_EX(
 			ex_reg_data_2 <= id_reg_data_2;
 			ex_reg_write_addr <= id_reg_write_addr;
 			ex_reg_write_en <= id_reg_write_en;		
-		end else begin
-        	ex_alu_op <= `EXE_NOP_OP;
-			ex_alu_sel <= `EXE_RES_NOP;
-			ex_reg_data_1 <= `ZEROWORD;
-			ex_reg_data_2 <= `ZEROWORD;
-			ex_reg_write_addr <= `NOP_REG_ADDR;
-			ex_reg_write_en <= `WRITE_DISABLE;    
-        end
+		end
 	end
 
 endmodule

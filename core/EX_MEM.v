@@ -16,6 +16,8 @@ module EX_MEM(
     input wire ex_hilo_write_en,
 
     input wire[5:0] stall,
+	input wire[`DOUBLE_REG_DATA_BUS] hilo_i,
+	input wire[1:0] count_i,
 
     output reg[`REG_DATA_BUS] mem_reg_write_data,    
     output reg[`REG_ADDR_BUS] mem_reg_write_addr,
@@ -23,7 +25,10 @@ module EX_MEM(
 
     output reg[`REG_DATA_BUS] mem_hi_write_data,
     output reg[`REG_DATA_BUS] mem_lo_write_data,
-    output reg mem_hilo_write_en
+    output reg mem_hilo_write_en,
+
+	output reg[`DOUBLE_REG_DATA_BUS] hilo_o,
+	output reg[1:0] count_o
 
 );
 
@@ -47,8 +52,8 @@ module EX_MEM(
 		    mem_hi_write_data <= `ZEROWORD;
 		    mem_lo_write_data <= `ZEROWORD;
 		    mem_hilo_write_en <= `WRITE_DISABLE;		
-	        //hilo_o <= {`ZEROWORD, `ZEROWORD};
-			//cnt_o <= 2'b00;	
+	        hilo_o <= {`ZEROWORD, `ZEROWORD};
+			count_o <= 2'b00;	
 		end else if(stall[3] == `STOP && stall[4] == `NOT_STOP) begin
 			mem_reg_write_addr <= `NOP_REG_ADDR;
 			mem_reg_write_en <= `WRITE_DISABLE;
@@ -56,8 +61,8 @@ module EX_MEM(
 		    mem_hi_write_data <= `ZEROWORD;
 		    mem_lo_write_data <= `ZEROWORD;
 		    mem_hilo_write_en <= `WRITE_DISABLE;
-	        //hilo_o <= hilo_i;
-			//cnt_o <= cnt_i;			  				    
+	        hilo_o <= hilo_i;
+			count_o <= count_i;			  				    
 		end else if(stall[3] == `NOT_STOP) begin
 			mem_reg_write_addr <= ex_reg_write_addr;
 			mem_reg_write_en <= ex_reg_write_en;
@@ -65,11 +70,11 @@ module EX_MEM(
 			mem_hi_write_data <= ex_hi_write_data;
 			mem_lo_write_data <= ex_lo_write_data;
 			mem_hilo_write_en <= ex_hilo_write_en;	
-	        //hilo_o <= {`ZEROWORD, `ZEROWORD};
-			//cnt_o <= 2'b00;	
+	        hilo_o <= {`ZEROWORD, `ZEROWORD};
+			count_o <= 2'b00;	
 		end else begin
-	        //hilo_o <= hilo_i;
-			//cnt_o <= cnt_i;											
+	        hilo_o <= hilo_i;
+			count_o <= count_i;											
 		end    
 	end      
 

@@ -118,6 +118,10 @@ module ID(
                     `EXE_CLZ:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_CLZ_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, 1'b1};
                     `EXE_CLO:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_CLO_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, 1'b1};
                     `EXE_MUL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MUL_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
+                    `EXE_MADD:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MADD_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
+                    `EXE_MADDU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MADDU_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
+                    `EXE_MSUB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MSUB_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
+                    `EXE_MSUBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MSUBU_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
                     default:begin end
                 endcase     //op3 end again
             end

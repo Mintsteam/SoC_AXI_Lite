@@ -28,9 +28,6 @@ module IF_ID(
         end else if(stall[1] == `NOT_STOP) begin
             id_pc <= if_pc;
             id_inst <= if_inst;
-        end else begin
-            id_pc <= `ZEROWORD;
-            id_inst <= `ZEROWORD;
         end
     end
 

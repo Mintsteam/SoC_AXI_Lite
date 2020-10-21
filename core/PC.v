@@ -24,18 +24,11 @@ module PC(
 
     always @ (posedge clk)
     begin
-        ce <= ( rst ? `CHIP_DISABLE : `CHIP_ENABLE );
-    end
-
-    always @ (posedge clk)
-    begin
         if(ce == `CHIP_DISABLE)
         begin
             pc <= 32'h00000000;
         end else if(stall[0] == `NOT_STOP) begin
             pc <= pc + 4'h4;
-        end else begin
-            pc <= `ZEROWORD;
         end
     end
     

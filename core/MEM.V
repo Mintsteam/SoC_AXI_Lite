@@ -14,8 +14,6 @@ module MEM(
     input wire[`REG_DATA_BUS] lo_write_data_i,
     input wire hilo_write_en_i,
 
-    input wire[5:0] stall,
-
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,
     output reg reg_write_en_o,
