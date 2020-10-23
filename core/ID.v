@@ -97,6 +97,8 @@ module ID(
                             `EXE_SUBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SUBU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
                             `EXE_MULT:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MULT_OP, 1'b1, 1'b1, 1'b1};
                             `EXE_MULTU:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MULTU_OP, 1'b1, 1'b1, 1'b1};
+                            `EXE_DIV:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_DIV_OP, 1'b1, 1'b1, 1'b1};
+                            `EXE_DIVU:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_DIVU_OP, 1'b1, 1'b1, 1'b1};
                             default:begin end
                         endcase     //op3 end
                     end

@@ -31,6 +31,9 @@ module EX(
     input wire[`DOUBLE_REG_DATA_BUS] hilo_temp_i,
     input wire[1:0] count_i,
 
+    input wire[`DOUBLE_REG_DATA_BUS] div_result_i,
+    input wire div_ready_i,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,    
     output reg reg_write_en_o,
@@ -39,10 +42,15 @@ module EX(
     output reg[`REG_DATA_BUS] lo_write_data_o,
     output reg hilo_write_en_o,
     
-    output reg stall_req,
-
     output reg[`DOUBLE_REG_DATA_BUS] hilo_temp_o,
-    output reg[1:0] count_o
+    output reg[1:0] count_o,
+
+    output reg[`REG_DATA_BUS] div_operand_1_o,
+    output reg[`REG_DATA_BUS] div_operand_2_o,
+    output reg div_start_o,
+    output reg signed_div_o,
+
+    output reg stall_req
 
 );
 
@@ -55,6 +63,7 @@ module EX(
     reg[`REG_DATA_BUS] arithmetic_out;
     reg[`DOUBLE_REG_DATA_BUS] hilo_temp1;
     reg madd_msub_stall_req;
+    reg div_stall_req;
 
     wire overflow;
     wire equal;
@@ -209,9 +218,70 @@ module EX(
         end
     end 
 
+    //output div control signals
+    always @ (*) 
+    begin
+        if(rst == `RST_ENABLE)
+        begin
+            div_stall_req <= `NOT_STOP;
+            div_operand_1_o <= `ZEROWORD;
+            div_operand_2_o <= `ZEROWORD;
+            div_start_o <= `DIV_STOP;
+            signed_div_o <= 1'b0;
+        end else begin
+            case(alu_op_i)
+                `EXE_DIV_OP: begin
+                    if(div_ready_i == `DIV_RESULT_NOT_READY)
+                    begin
+                        div_operand_1_o <= operand_1_i;
+                        div_operand_2_o <= operand_2_i;
+                        div_start_o <= `DIV_START;
+                        signed_div_o <= 1'b1;
+                        div_stall_req <= `STOP;
+                    end else if(div_ready_i == `DIV_RESULT_READY) begin
+                        div_operand_1_o <= operand_1_i;
+                        div_operand_2_o <= operand_2_i;
+                        div_start_o <= `DIV_STOP;
+                        signed_div_o <= 1'b1;
+                        div_stall_req <= `NOT_STOP;
+                    end else begin
+                        div_operand_1_o <= `ZEROWORD;
+                        div_operand_2_o <= `ZEROWORD;
+                        div_start_o <= `DIV_STOP;
+                        signed_div_o <= 1'b1;
+                        div_stall_req <= `NOT_STOP;
+                    end
+                end
+                `EXE_DIVU_OP: begin
+                    if(div_ready_i == `DIV_RESULT_NOT_READY)
+                    begin
+                        div_operand_1_o <= operand_1_i;
+                        div_operand_2_o <= operand_2_i;
+                        div_start_o <= `DIV_START;
+                        signed_div_o <= 1'b0;
+                        div_stall_req <= `STOP;
+                    end else if(div_ready_i == `DIV_RESULT_READY) begin
+                        div_operand_1_o <= operand_1_i;
+                        div_operand_2_o <= operand_2_i;
+                        div_start_o <= `DIV_STOP;
+                        signed_div_o <= 1'b0;
+                        div_stall_req <= `NOT_STOP;
+                    end else begin
+                        div_operand_1_o <= `ZEROWORD;
+                        div_operand_2_o <= `ZEROWORD;
+                        div_start_o <= `DIV_STOP;
+                        signed_div_o <= 1'b0;
+                        div_stall_req <= `NOT_STOP;
+                    end
+                end
+                default: begin end
+            endcase
+        end    
+    end
+
     always @ (*)
     begin
-        stall_req = madd_msub_stall_req;
+        stall_req = madd_msub_stall_req || div_stall_req;
     end
 
     //execute logic instructions
@@ -291,7 +361,11 @@ module EX(
         end else if((alu_op_i == `EXE_MULT_OP) || (alu_op_i == `EXE_MULTU_OP)) begin
             hilo_write_en_o <= `WRITE_ENABLE;
             hi_write_data_o <= mul_out[63:32];
-            lo_write_data_o <= mul_out[31:0];   
+            lo_write_data_o <= mul_out[31:0]; 
+        end else if((alu_op_i == `EXE_DIV_OP) || (alu_op_i == `EXE_DIVU_OP)) begin
+            hilo_write_en_o <= `WRITE_ENABLE;
+            hi_write_data_o <= div_result_i[63:32];
+            lo_write_data_o <= div_result_i[31:0];  
         end else if(alu_op_i == `EXE_MTHI_OP) begin
             hilo_write_en_o <= `WRITE_ENABLE;
             hi_write_data_o <= operand_1_i;

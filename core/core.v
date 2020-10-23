@@ -14,12 +14,12 @@ module core(
 
 );
 
-    //connect IF_ID with ID
+    //connect IF_ID to ID
     wire[`INST_ADDR_BUS] pc;
     wire[`INST_ADDR_BUS] id_pc_o;
     wire[`INST_DATA_BUS] id_inst_o;
 
-    //connect ID with ID_EX
+    //connect ID to ID_EX
     wire[`ALU_OP_BUS] id_alu_op_o;
     wire[`ALU_SEL_BUS] id_alu_sel_o;
     wire[`REG_DATA_BUS] id_operand_1_o;
@@ -27,7 +27,7 @@ module core(
     wire id_reg_write_en_o;
     wire[`REG_ADDR_BUS] id_reg_write_addr_o;
 
-    //connect ID_EX with EX
+    //connect ID_EX to EX
     wire[`ALU_OP_BUS] ex_alu_op_i;
     wire[`ALU_SEL_BUS] ex_alu_sel_i;
     wire[`REG_DATA_BUS] ex_operand_1_i;
@@ -35,7 +35,7 @@ module core(
     wire ex_reg_write_en_i;
     wire[`REG_ADDR_BUS] ex_reg_write_addr_i;
 
-    //connect EX with EX_MEM
+    //connect EX to EX_MEM
     wire ex_reg_write_en_o;
     wire[`REG_ADDR_BUS] ex_reg_write_addr_o;
     wire[`REG_DATA_BUS] ex_reg_write_data_o;
@@ -45,7 +45,13 @@ module core(
     wire[1:0] ex_count_o;
     wire[`DOUBLE_REG_DATA_BUS] ex_hilo_temp_o;
 
-    //connect EX_MEM with MEM
+    //connect EX to DIV
+    wire[`REG_DATA_BUS] div_operand_1_o;
+    wire[`REG_DATA_BUS] div_operand_2_o;
+    wire div_start_o;
+    wire signed_div_o;
+
+    //connect EX_MEM to MEM
     wire mem_reg_write_en_i;
     wire[`REG_ADDR_BUS] mem_reg_write_addr_i;
     wire[`REG_DATA_BUS] mem_reg_write_data_i;
@@ -53,7 +59,7 @@ module core(
     wire[`REG_DATA_BUS] mem_hi_write_data_i;
     wire[`REG_DATA_BUS] mem_lo_write_data_i;
 
-    //connect MEM with MEM_WB
+    //connect MEM to MEM_WB
     wire mem_reg_write_en_o;
     wire[`REG_ADDR_BUS] mem_reg_write_addr_o;
     wire[`REG_DATA_BUS] mem_reg_write_data_o;
@@ -61,7 +67,7 @@ module core(
     wire[`REG_DATA_BUS] mem_hi_write_data_o;
     wire[`REG_DATA_BUS] mem_lo_write_data_o;
 
-    //connect MEM_WB with WB
+    //connect MEM_WB to WB
     wire wb_reg_write_en_i;
     wire[`REG_ADDR_BUS] wb_reg_write_addr_i;
     wire[`REG_DATA_BUS] wb_reg_write_data_i;
@@ -69,7 +75,7 @@ module core(
     wire[`REG_DATA_BUS] wb_hi_write_data_i;
     wire[`REG_DATA_BUS] wb_lo_write_data_i;
 
-    //connect ID with REGFIE
+    //connect ID to REGFIE
     wire reg_read_en_1;
     wire reg_read_en_2;
     wire[`REG_DATA_BUS] reg_read_data_1;
@@ -77,20 +83,24 @@ module core(
     wire[`REG_ADDR_BUS] reg_read_addr_1;
     wire[`REG_ADDR_BUS] reg_read_addr_2;
 
-    //connect HILO with EX
+    //connect HILO to EX
     wire[`REG_DATA_BUS] hi_read_data_o;
     wire[`REG_DATA_BUS] lo_read_data_o;
 
-    //connect CTRL with pipeline regs
+    //connect CTRL to pipeline regs
     wire[5:0] stall;
 
-    //connect CTRL with ID,EX
+    //connect CTRL to ID,EX
     wire id_stall_req;
     wire ex_stall_req;
 
     //connect EX_MEM to EX
     wire[1:0] ex_mem_count_o;
     wire[`DOUBLE_REG_DATA_BUS] ex_mem_hilo_o;
+
+    //connect DIV to EX
+    wire[`DOUBLE_REG_DATA_BUS] div_out;
+    wire div_ready_o; 
 
     PC PC0(
 
@@ -244,6 +254,10 @@ module core(
         .count_i(ex_mem_count_o),
         .hilo_temp_i(ex_mem_hilo_o),
 
+        //INPUT FROM DIV
+        .div_result_i(div_out),
+        .div_ready_i(div_ready_o),
+
         //OUTPUT TO EX_MEM,ID(forwarding)
         .reg_write_data_o(ex_reg_write_data_o),
         .reg_write_addr_o(ex_reg_write_addr_o),
@@ -257,7 +271,13 @@ module core(
         .hilo_temp_o(ex_hilo_temp_o),
 
         //OUTPUT TO CTRL
-        .stall_req(ex_stall_req)
+        .stall_req(ex_stall_req),
+
+        //OUTPUT TO DIV
+        .div_operand_1_o(div_operand_1_o),
+        .div_operand_2_o(div_operand_2_o),
+        .div_start_o(div_start_o),
+        .signed_div_o(signed_div_o)
 
     );
 
@@ -373,6 +393,24 @@ module core(
 
         //OUTPUT
         .stall(stall)
+
+    );
+
+    DIV DIV0(
+
+        .clk(clk),
+        .rst(rst),
+
+        //INPUT FROM EX
+        .operand_1_i(div_operand_1_o),
+        .operand_2_i(div_operand_2_o),
+        .start_div_i(div_start_o),
+        .signed_div_i(signed_div_o),
+        .discard_div(1'b0),
+
+        //OUTPUT TO EX
+        .div_out(div_out),
+        .div_ready_o(div_ready_o)
 
     );
 

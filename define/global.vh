@@ -16,6 +16,16 @@
 `define STOP 1'b1
 `define NOT_STOP 1'b0
 
+//³ı·¨div
+`define DIV_READY 2'b00
+`define DIV_BY_ZERO 2'b01
+`define DIV_EXECUTING 2'b10
+`define DIV_END 2'b11
+`define DIV_RESULT_READY 1'b1
+`define DIV_RESULT_NOT_READY 1'b0
+`define DIV_START 1'b1
+`define DIV_STOP 1'b0
+
 //stage > component > operation > num
 //data > addr > en
 
