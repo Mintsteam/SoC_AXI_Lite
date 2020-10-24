@@ -19,6 +19,10 @@ module core(
     wire[`INST_ADDR_BUS] id_pc_o;
     wire[`INST_DATA_BUS] id_inst_o;
 
+    //connect ID to PC
+    wire[`REG_DATA_BUS] branch_target_addr_o;
+    wire branch_flag_o;
+
     //connect ID to ID_EX
     wire[`ALU_OP_BUS] id_alu_op_o;
     wire[`ALU_SEL_BUS] id_alu_sel_o;
@@ -26,6 +30,7 @@ module core(
     wire[`REG_DATA_BUS] id_operand_2_o;
     wire id_reg_write_en_o;
     wire[`REG_ADDR_BUS] id_reg_write_addr_o;
+    wire[`REG_DATA_BUS] link_addr_o;
 
     //connect ID_EX to EX
     wire[`ALU_OP_BUS] ex_alu_op_i;
@@ -34,6 +39,12 @@ module core(
     wire[`REG_DATA_BUS] ex_operand_2_i;
     wire ex_reg_write_en_i;
     wire[`REG_ADDR_BUS] ex_reg_write_addr_i;
+    wire ex_is_in_delayslot;
+    wire[`REG_DATA_BUS] ex_link_addr;
+    wire next_inst_in_delayslot_o;
+
+    //connect ID_EX to ID
+    wire is_in_delayslot_o;
 
     //connect EX to EX_MEM
     wire ex_reg_write_en_o;
@@ -107,6 +118,10 @@ module core(
         .clk(clk),
         .rst(rst),
 
+        //INPUT FROM PC
+        .branch_flag_i(branch_flag_o),
+        .branch_target_addr_i(branch_target_addr_o),
+
         //INPUT FROM CTRL
         .stall(stall),
         
@@ -138,6 +153,10 @@ module core(
 
     ID ID0(
 
+        //INPUT FROM PC
+        .branch_target_addr_o(branch_target_addr_o),
+        .branch_flag_o(branch_flag_o),
+
         //INPUT FROM IF_ID
         .rst(rst),
         .inst_addr(id_pc_o),        
@@ -152,6 +171,9 @@ module core(
         //INPUT FROM REGFILE
         .reg_data_1_i(reg_read_data_1),
         .reg_data_2_i(reg_read_data_2),
+
+        //INPUT FROM ID_EX
+        .is_in_delayslot_i(is_in_delayslot_o),
 
         //INPUT FROM EX (forwarding)
         .ex_reg_write_en_i(ex_reg_write_en_o),
@@ -170,6 +192,9 @@ module core(
         .operand_2_o(id_operand_2_o),
         .reg_write_addr_o(id_reg_write_addr_o),
         .reg_write_en_o(id_reg_write_en_o),
+        .is_in_delayslot_o(is_in_delayslot_o),
+        .link_addr_o(link_addr_o),
+        .next_inst_in_delayslot_o(next_inst_in_delayslot_o),
 
         //OUTPUT TO CTRL
         .stall_req(id_stall_req)
@@ -210,6 +235,9 @@ module core(
         .id_reg_data_2(id_operand_2_o),
         .id_reg_write_addr(id_reg_write_addr_o),
         .id_reg_write_en(id_reg_write_en_o),
+        .id_link_addr(link_addr_o),
+        .id_is_in_delayslot(is_in_delayslot_o),
+        .next_inst_in_delayslot_i(next_inst_in_delayslot_o),
 
         //INPUT FROM CTRL
         .stall(stall),
@@ -220,7 +248,10 @@ module core(
         .ex_reg_data_1(ex_operand_1_i),
         .ex_reg_data_2(ex_operand_2_i),
         .ex_reg_write_addr(ex_reg_write_addr_i),
-        .ex_reg_write_en(ex_reg_write_en_i)
+        .ex_reg_write_en(ex_reg_write_en_i),
+        .ex_link_addr(ex_link_addr),
+        .ex_is_in_delayslot(ex_is_in_delayslot),
+        .is_in_delayslot_o(is_in_delayslot_o)
 
     );
 
@@ -235,6 +266,8 @@ module core(
         .operand_2_i(ex_operand_2_i),
         .reg_write_addr_i(ex_reg_write_addr_i),
         .reg_write_en_i(ex_reg_write_en_i),
+        .link_addr_i(ex_link_addr),
+        .is_in_delayslot_i(ex_is_in_delayslot),
 
         //INPUT FROM HILO
         .hi_read_data_i(hi_read_data_o),

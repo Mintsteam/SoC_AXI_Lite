@@ -18,13 +18,21 @@ module ID_EX(
 
     input wire[5:0] stall,
 
+	input wire[`REG_DATA_BUS] id_link_addr,
+	input wire id_is_in_delayslot,
+	input wire next_inst_in_delayslot_i,
+
     output reg[`ALU_OP_BUS] ex_alu_op,
     output reg[`ALU_SEL_BUS] ex_alu_sel,
 
     output reg[`REG_DATA_BUS] ex_reg_data_1,
     output reg[`REG_DATA_BUS] ex_reg_data_2,
     output reg[`REG_ADDR_BUS] ex_reg_write_addr,    
-    output reg ex_reg_write_en
+    output reg ex_reg_write_en,
+
+	output reg[`REG_DATA_BUS] ex_link_addr,
+	output reg ex_is_in_delayslot,
+	output reg is_in_delayslot_o
 
 );
 
@@ -51,7 +59,10 @@ module ID_EX(
 			ex_reg_data_1 <= id_reg_data_1;
 			ex_reg_data_2 <= id_reg_data_2;
 			ex_reg_write_addr <= id_reg_write_addr;
-			ex_reg_write_en <= id_reg_write_en;		
+			ex_reg_write_en <= id_reg_write_en;	
+			ex_link_addr <= id_link_addr;
+			ex_is_in_delayslot <= id_is_in_delayslot;
+			is_in_delayslot_o <= next_inst_in_delayslot_i;	
 		end
 	end
 

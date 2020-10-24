@@ -34,6 +34,9 @@ module EX(
     input wire[`DOUBLE_REG_DATA_BUS] div_result_i,
     input wire div_ready_i,
 
+    input wire[`REG_DATA_BUS] link_addr_i,
+    input wire is_in_delayslot_i,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,    
     output reg reg_write_en_o,
@@ -87,6 +90,8 @@ module EX(
     assign smaller = ((alu_op_i == `EXE_SLT_OP)) ? ((operand_1_i[31] && !operand_2_i[31]) || (operand_1_i[31] && !operand_2_i[31] && sum_out[31]) || (operand_1_i[31] && operand_2_i[31] && sum_out[31])) : (operand_1_i < operand_2_i);
 
     assign operand_1_not = ~operand_1_i;
+
+    assign equal = (operand_1_i == operand_2_i) ? 1'b1 : 1'b0;
 
     always @ (*)
     begin
@@ -338,6 +343,7 @@ module EX(
 	 	    `EXE_RES_MOVE:reg_write_data_o <= move_out;
             `EXE_RES_ARITHMETIC:reg_write_data_o <= arithmetic_out;
             `EXE_RES_MUL:reg_write_data_o <= mul_out[31:0];
+            `EXE_RES_JUMP_BRANCH:reg_write_data_o <= link_addr_i;
 	 	    default:reg_write_data_o <= `ZEROWORD;
 	    endcase
     end	

@@ -26,6 +26,12 @@
 `define DIV_START 1'b1
 `define DIV_STOP 1'b0
 
+//branch
+`define BRANCH 1'b1
+`define NOT_BRANCH 1'b0
+`define IN_DELAY_SLOT 1'b1
+`define NOT_IN_DELAY_SLOT 1'b0
+
 //stage > component > operation > num
 //data > addr > en
 
