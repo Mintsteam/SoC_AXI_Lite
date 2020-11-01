@@ -37,6 +37,8 @@ module EX(
     input wire[`REG_DATA_BUS] link_addr_i,
     input wire is_in_delayslot_i,
 
+    input wire[`REG_DATA_BUS] inst_data_i,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,    
     output reg reg_write_en_o,
@@ -52,6 +54,10 @@ module EX(
     output reg[`REG_DATA_BUS] div_operand_2_o,
     output reg div_start_o,
     output reg signed_div_o,
+
+    output wire[`ALU_OP_BUS] alu_op_o,
+    output wire[`REG_DATA_BUS] mem_addr_o,
+    output wire[`REG_DATA_BUS] operand_2_o, 
 
     output reg stall_req
 
@@ -77,6 +83,10 @@ module EX(
     wire[`REG_DATA_BUS] operand_multiplicand;
     wire[`REG_DATA_BUS] operand_multiplier;
     wire[`DOUBLE_REG_DATA_BUS] hilo_temp;
+
+    assign alu_op_o = alu_op_i;
+    assign mem_addr_o = operand_1_i + {{16{inst_data_i[15]}}, inst_data_i[15:0]};
+    assign operand_2_o = operand_2_i;
 
     //******************************phase I****execute******************************//
 

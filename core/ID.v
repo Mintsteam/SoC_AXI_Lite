@@ -29,6 +29,7 @@ module ID(
     input wire ex_reg_write_en_i,
     input wire[`REG_DATA_BUS] ex_reg_write_data_i,
     input wire[`REG_ADDR_BUS] ex_reg_write_addr_i,
+    input wire[`ALU_OP_BUS] ex_alu_op_i,
 
     //forwarding from mem
     input wire mem_reg_write_en_i,
@@ -48,9 +49,12 @@ module ID(
     output reg[`REG_DATA_BUS] operand_1_o,
     output reg[`REG_DATA_BUS] operand_2_o,
 
+    output wire[`REG_DATA_BUS] inst_data_o,
+
     output wire stall_req
 
 );
+
     //opcode acquire
     wire[5:0] op = inst_data[31:26];
     wire[4:0] op2 = inst_data[10:6];
@@ -62,6 +66,17 @@ module ID(
 
     wire[`REG_DATA_BUS] branch_addr;
 
+    reg stall_req_for_reg1_loadrelate;
+    reg stall_req_for_reg2_loadrelate;
+
+    assign stall_req = stall_req_for_reg1_loadrelate | stall_req_for_reg2_loadrelate;
+
+    wire pre_inst_is_load;
+
+    assign pre_inst_is_load = ((ex_alu_op_i == `EXE_LB_OP) || (ex_alu_op_i == `EXE_LBU_OP) || (ex_alu_op_i == `EXE_LH_OP) || (ex_alu_op_i == `EXE_LHU_OP) || (ex_alu_op_i == `EXE_LW_OP) || (ex_alu_op_i == `EXE_LWR_OP) || (ex_alu_op_i == `EXE_LWL_OP) || (ex_alu_op_i == `EXE_LL_OP) || (ex_alu_op_i == `EXE_SC_OP)) ? 1'b1 : 1'b0;
+
+    assign inst_data_o = inst_data;
+
     assign pc_plus_8 = inst_addr + 8;
     assign pc_plus_4 = inst_addr + 4;
 
@@ -70,8 +85,6 @@ module ID(
     reg[`REG_DATA_BUS] imm;
 
     reg inst_valid;
-
-    assign stall_req = `NOT_STOP;
 
     /*****decode*****/
     //signal initialization
@@ -102,7 +115,7 @@ module ID(
 	    				    `EXE_AND:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_AND_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b1};
 		    			    `EXE_NOR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_NOR_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b1};
 						    `EXE_SLLV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SLL_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b1};
-						    `EXE_SRLV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SRL_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b1};
+						    `EXE_SRLV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SRL_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b1}; 
 						    `EXE_SRAV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SRA_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b1};
 						    `EXE_SYNC:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_NOP_OP, `EXE_RES_NOP  , 1'b0, 1'b1, 1'b1};
 					        `EXE_MFHI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MFHI_OP, `EXE_RES_MOVE, 1'b0, 1'b0, 1'b1};
@@ -196,6 +209,20 @@ module ID(
                     next_inst_in_delayslot_o <= `IN_DELAY_SLOT;
                 end
             end
+            `EXE_LB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LB_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
+            `EXE_LBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LBU_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
+            `EXE_LH:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LH_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
+            `EXE_LHU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LHU_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
+            `EXE_LW:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LW_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
+            `EXE_LWL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LWL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b1};
+            `EXE_LWR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LWR_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b1};
+            `EXE_SB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SB_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
+            `EXE_SH:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SH_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
+            `EXE_SW:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SW_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
+            `EXE_SWL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SWL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
+            `EXE_SWR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SWR_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
+            `EXE_LL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
+            `EXE_SC:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SC_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b1};
             `EXE_REGIMM_INST: begin
                 case(op4)
                     `EXE_BGEZ: begin
@@ -290,8 +317,12 @@ module ID(
     //operand_1_o acquire
 	always @ (*) 
     begin
-        if(rst) begin
+        stall_req_for_reg1_loadrelate <= `NOT_STOP;
+        if(rst == `RST_ENABLE)
+        begin
             operand_1_o <= `ZEROWORD;
+        end else if(pre_inst_is_load == 1'b1 && ex_reg_write_addr_i == reg_read_addr_1_o && reg_read_en_1_o == 1'b1) begin
+            stall_req_for_reg1_loadrelate <= `STOP;
         end else if((reg_read_en_1_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_1_o)) begin
             operand_1_o <= ex_reg_write_data_i;
         end else if((reg_read_en_1_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_1_o)) begin
@@ -308,8 +339,12 @@ module ID(
     //operand_2_o acquire
 	always @ (*) 
     begin
-        if(rst) begin
+        stall_req_for_reg2_loadrelate <= `NOT_STOP;
+        if(rst == `RST_ENABLE)
+        begin
             operand_2_o <= `ZEROWORD;
+        end else if(pre_inst_is_load == 1'b1 && ex_reg_write_addr_i == reg_read_addr_2_o && reg_read_en_2_o == 1'b1) begin
+            stall_req_for_reg2_loadrelate <= `STOP;
         end else if((reg_read_en_2_o == 1'b1) && (ex_reg_write_en_i == 1'b1) && (ex_reg_write_addr_i == reg_read_addr_2_o)) begin
             operand_2_o <= ex_reg_write_data_i;
         end else if((reg_read_en_2_o == 1'b1) && (mem_reg_write_en_i == 1'b1) && (mem_reg_write_addr_i == reg_read_addr_2_o)) begin

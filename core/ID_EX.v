@@ -22,6 +22,8 @@ module ID_EX(
 	input wire id_is_in_delayslot,
 	input wire next_inst_in_delayslot_i,
 
+	input wire[`REG_DATA_BUS] id_inst_data,
+
     output reg[`ALU_OP_BUS] ex_alu_op,
     output reg[`ALU_SEL_BUS] ex_alu_sel,
 
@@ -32,7 +34,9 @@ module ID_EX(
 
 	output reg[`REG_DATA_BUS] ex_link_addr,
 	output reg ex_is_in_delayslot,
-	output reg is_in_delayslot_o
+	output reg is_in_delayslot_o,
+
+	output reg[`REG_DATA_BUS] ex_inst_data
 
 );
 
@@ -63,6 +67,7 @@ module ID_EX(
 			ex_link_addr <= id_link_addr;
 			ex_is_in_delayslot <= id_is_in_delayslot;
 			is_in_delayslot_o <= next_inst_in_delayslot_i;	
+			ex_inst_data <= id_inst_data;
 		end
 	end
 

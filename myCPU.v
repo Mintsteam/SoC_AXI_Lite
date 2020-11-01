@@ -12,20 +12,54 @@ module myCPU(
 
     wire[`INST_ADDR_BUS] inst_addr;
     wire[`INST_DATA_BUS] inst;
+    wire[`REG_DATA_BUS] ram_addr_o;
+    wire[`REG_DATA_BUS] ram_write_data_o;
+    wire[3:0] ram_sel_o;
+    wire ram_write_en_o;
+    wire[`REG_DATA_BUS] data_o;
     wire rom_ce;
+    wire ram_ce;
+
+    assign ram_ce = 1'b1;
 
     core core0(
+
+        //INPUT
         .clk(clk),
         .rst(rst),
-        .rom_addr_o(inst_addr),
         .rom_data_i(inst),
-        .rom_ce_o(rom_ce)
+        .ram_read_data_i(data_o),
+
+        //OUTPUT
+        .rom_addr_o(inst_addr),
+        .rom_ce_o(rom_ce),
+        .ram_addr_o(ram_addr_o),
+        .ram_write_data_o(ram_write_data_o),
+        .ram_write_en_o(ram_write_en_o),
+        .ram_sel_o(ram_sel_o),
+        .ram_ce_o(ram_ce_o)
+
     );
     
     ROM ROM0(
         .ce(rom_ce),
         .addr(inst_addr),
         .inst(inst)
+    );
+
+    RAM RAM0(
+
+        //INPUT
+        .clk(clk),
+        .ce(ram_ce),
+        .write_en(ram_write_en_o),
+        .addr(ram_addr_o),
+        .sel(ram_sel_o),
+        .data_i(ram_write_data_o),
+
+        //OUTPUT
+        .data_o(data_o)
+
     );
 
 endmodule

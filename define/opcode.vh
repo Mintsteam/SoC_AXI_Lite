@@ -1,3 +1,4 @@
+//ЦёБо
 `define EXE_AND  6'b100100
 `define EXE_OR   6'b100101
 `define EXE_XOR 6'b100110
@@ -99,7 +100,7 @@
 `define EXE_REGIMM_INST 6'b000001
 `define EXE_SPECIAL_INST_2 6'b011100
 
-//ALU_OP
+//AluOp
 `define EXE_AND_OP   8'b00100100
 `define EXE_OR_OP    8'b00100101
 `define EXE_XOR_OP  8'b00100110
@@ -199,7 +200,7 @@
 
 `define EXE_NOP_OP    8'b00000000
 
-//ALU_SEL
+//AluSel
 `define EXE_RES_LOGIC 3'b001
 `define EXE_RES_SHIFT 3'b010
 `define EXE_RES_MOVE 3'b011	

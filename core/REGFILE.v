@@ -58,7 +58,7 @@ module REGFILE(
             read_data_1_o <= `ZEROWORD;
         end else if(read_en_1_i && write_en_i && read_addr_1_i == write_addr_i) begin
             read_data_1_o <= write_data_i;
-        end else if(read_en_1_i) begin
+        end else if(read_en_1_i == `READ_ENABLE) begin
             read_data_1_o <= regs[read_addr_1_i];
         end else begin
             read_data_1_o <= `ZEROWORD;
@@ -76,7 +76,7 @@ module REGFILE(
             read_data_2_o <= `ZEROWORD;
         end else if(read_en_2_i && write_en_i && read_addr_2_i == write_addr_i) begin
             read_data_2_o <= write_data_i;
-        end else if(read_en_2_i) begin
+        end else if(read_en_2_i == `READ_ENABLE) begin
             read_data_2_o <= regs[read_addr_2_i];
         end else begin
             read_data_2_o <= `ZEROWORD;
