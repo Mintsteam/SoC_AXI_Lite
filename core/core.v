@@ -5,8 +5,9 @@
 
 module core(
 
-    input clk,
-    input rst,
+    input wire clk,
+    input wire rst,
+    input wire[5:0] interrupt_i,
 
     input wire[`REG_DATA_BUS] rom_data_i,
     output wire[`REG_DATA_BUS] rom_addr_o,
@@ -17,7 +18,8 @@ module core(
     output wire[`REG_DATA_BUS] ram_write_data_o,
     output wire ram_write_en_o,
     output wire[3:0] ram_sel_o,
-    output wire ram_ce_o
+    output wire ram_ce_o,
+    output wire timer_interrupt_o
 
 );
 
@@ -67,6 +69,10 @@ module core(
     wire[`ALU_OP_BUS] alu_op_o;
     wire[`REG_DATA_BUS] mem_addr_o;
     wire[`REG_DATA_BUS] operand_2_o;
+    wire[4:0] cp0_reg_read_addr_o;
+    wire[`REG_DATA_BUS] cp0_reg_write_data_o1;
+    wire[4:0] cp0_reg_write_addr_o1;
+    wire cp0_reg_write_en_o1;
 
     //connect EX to DIV
     wire[`REG_DATA_BUS] div_operand_1_o;
@@ -84,6 +90,9 @@ module core(
     wire[`ALU_OP_BUS] mem_alu_op;
     wire[`REG_DATA_BUS] mem_mem_addr;
     wire[`REG_DATA_BUS] mem_operand_2;
+    wire[`REG_DATA_BUS] mem_cp0_reg_write_data;
+    wire[4:0] mem_cp0_reg_write_addr;
+    wire mem_cp0_reg_write_en;
 
     //connect MEM to MEM_WB
     wire mem_reg_write_en_o;
@@ -94,6 +103,9 @@ module core(
     wire[`REG_DATA_BUS] mem_lo_write_data_o;
     wire LLbit_write_en_o;
     wire LLbit_data_o;
+    wire[`REG_DATA_BUS] cp0_reg_write_data_o;
+    wire[4:0] cp0_reg_write_addr_o;
+    wire cp0_reg_write_en_o;    
 
     //connect MEM_WB to WB
     wire wb_reg_write_en_i;
@@ -106,6 +118,11 @@ module core(
     //connect MEM_WB to LLbit
     wire wb_LLbit_write_en;
     wire wb_LLbit_data;
+
+    //connect MEM_WB to CP0
+    wire[`REG_DATA_BUS] wb_cp0_reg_write_data;
+    wire[4:0] wb_cp0_reg_write_addr;
+    wire wb_cp0_reg_write_en;
 
     //connect ID to REGFIE
     wire reg_read_en_1;
@@ -136,6 +153,17 @@ module core(
 
     //connect LLbit to MEM
     wire LLbit_o;
+
+    //connect CP0 to EX
+    wire[`REG_DATA_BUS] read_data_o;
+
+    wire[`REG_DATA_BUS] count_o;
+    wire[`REG_DATA_BUS] compare_o;
+    wire[`REG_DATA_BUS] status_o;
+    wire[`REG_DATA_BUS] cause_o;
+    wire[`REG_DATA_BUS] epc_o;
+    wire[`REG_DATA_BUS] config_o;
+    wire[`REG_DATA_BUS] prid_o;
 
     PC PC0(
 
@@ -306,11 +334,17 @@ module core(
         .mem_hi_write_data_i(mem_hi_write_data_o),
         .mem_lo_write_data_i(mem_lo_write_data_o),
         .mem_hilo_write_en_i(mem_hilo_write_en_o),
+        .mem_cp0_reg_write_data(cp0_reg_write_data_o),
+        .mem_cp0_reg_write_addr(cp0_reg_write_addr_o),
+        .mem_cp0_reg_write_en(cp0_reg_write_en_o),
 
-        //INPUT FROM WB (forwarding)
+        //INPUT FROM MEM_WB (forwarding)
         .wb_hi_write_data_i(wb_hi_write_data_i),
         .wb_lo_write_data_i(wb_lo_write_data_i),
         .wb_hilo_write_en_i(wb_hilo_write_en_i),
+        .wb_cp0_reg_write_data(wb_cp0_reg_write_data),
+        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr),
+        .wb_cp0_reg_write_en(wb_cp0_reg_write_en),
 
         //INPUT FROM EX_MEM
         .count_i(ex_mem_count_o),
@@ -319,6 +353,9 @@ module core(
         //INPUT FROM DIV
         .div_result_i(div_out),
         .div_ready_i(div_ready_o),
+
+        //INPUT FROM CP0
+        .cp0_reg_read_data_i(read_data_o),
 
         //OUTPUT TO EX_MEM,ID(forwarding)
         .reg_write_data_o(ex_reg_write_data_o),
@@ -334,6 +371,10 @@ module core(
         .alu_op_o(alu_op_o),
         .mem_addr_o(mem_addr_o),
         .operand_2_o(operand_2_o),
+        .cp0_reg_read_addr_o(cp0_reg_read_addr_o),
+        .cp0_reg_write_data_o(cp0_reg_write_data_o1),
+        .cp0_reg_write_addr_o(cp0_reg_write_addr_o1),
+        .cp0_reg_write_en_o(cp0_reg_write_en_o1),
 
         //OUTPUT TO CTRL
         .stall_req(ex_stall_req),
@@ -363,7 +404,9 @@ module core(
         .ex_alu_op(alu_op_o),
         .ex_mem_addr(mem_addr_o),
         .ex_operand_2(operand_2_o),
-
+        .ex_cp0_reg_write_data(cp0_reg_write_data_o1),
+        .ex_cp0_reg_write_addr(cp0_reg_write_addr_o1),
+        .ex_cp0_reg_write_en(cp0_reg_write_en_o1),
 
         //INPUT FROM CTRL
         .stall(stall),
@@ -378,6 +421,9 @@ module core(
         .mem_alu_op(mem_alu_op),
         .mem_mem_addr(mem_mem_addr),
         .mem_operand_2(mem_operand_2),
+        .mem_cp0_reg_write_data(mem_cp0_reg_write_data),
+        .mem_cp0_reg_write_addr(mem_cp0_reg_write_addr),
+        .mem_cp0_reg_write_en(mem_cp0_reg_write_en),
 
         //OUTPUT TO EX
         .count_o(ex_mem_count_o),
@@ -399,6 +445,9 @@ module core(
         .alu_op_i(mem_alu_op),
         .mem_addr_i(mem_mem_addr),
         .operand_2_i(mem_operand_2),
+        .cp0_reg_write_data_i(mem_cp0_reg_write_data),
+        .cp0_reg_write_addr_i(mem_cp0_reg_write_addr),
+        .cp0_reg_write_en_i(mem_cp0_reg_write_en),
 
         //INPUT FROM RAM
         .mem_read_data_i(ram_read_data_i),
@@ -414,6 +463,9 @@ module core(
         .reg_write_en_o(mem_reg_write_en_o),
         .LLbit_write_en_o(LLbit_write_en_o),
         .LLbit_data_o(LLbit_data_o),
+        .cp0_reg_write_data_o(cp0_reg_write_data_o),
+        .cp0_reg_write_addr_o(cp0_reg_write_addr_o),
+        .cp0_reg_write_en_o(cp0_reg_write_en_o),
 
         //OUTPUT TO MEM_WB,EX(forwarding)
         .hi_write_data_o(mem_hi_write_data_o),
@@ -443,6 +495,9 @@ module core(
         .mem_hilo_write_en(mem_hilo_write_en_o),
         .mem_LLbit_write_en(LLbit_write_en_o),
         .mem_LLbit_data(LLbit_data_o),
+        .mem_cp0_reg_write_data(cp0_reg_write_data_o),
+        .mem_cp0_reg_write_addr(cp0_reg_write_addr_o),
+        .mem_cp0_reg_write_en(cp0_reg_write_en_o),
 
         //INPUT FROM CTRL
         .stall(stall),
@@ -459,7 +514,10 @@ module core(
         //OUTPUT TO WB,EX(forwarding)
         .wb_hi_write_data(wb_hi_write_data_i),
         .wb_lo_write_data(wb_lo_write_data_i),
-        .wb_hilo_write_en(wb_hilo_write_en_i)
+        .wb_hilo_write_en(wb_hilo_write_en_i),
+        .wb_cp0_reg_write_data(wb_cp0_reg_write_data),
+        .wb_cp0_reg_write_en(wb_cp0_reg_write_en),
+        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr)
 
     );
 
@@ -525,6 +583,33 @@ module core(
 
         //OUTPUT TO MEM
         .LLbit_o(LLbit_o)
+
+    );
+
+    CP0 CP00(
+
+        //INPUT
+        .clk(clk),
+        .rst(rst),
+        .interrupt_i(interrupt_i),
+        
+        //INPUT FROM MEM_WB
+        .write_data_i(wb_cp0_reg_write_data),
+        .write_addr_i(wb_cp0_reg_write_addr),
+        .write_en_i(wb_cp0_reg_write_en),
+        .read_addr_i(cp0_reg_read_addr_o),
+
+        //OUTPUT TO EX
+        .read_data_o(read_data_o),
+        .count_o(count_o),
+        .compare_o(compare_o),
+        .status_o(status_o),
+        .cause_o(cause_o),
+        .epc_o(epc_o),
+        .config_o(config_o),
+        .prid_o(prid_o),
+        
+        .timer_interrupt_o(timer_interrupt_o)
 
     );
 

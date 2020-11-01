@@ -105,6 +105,25 @@ module ID(
         reg_read_addr_2_o <= rst ? 0 : inst_data[20:16];		
         imm <= `ZEROWORD;
 
+        if(inst_data[31:21] == 11'b01000000000 && inst_data[10:0] == 11'b00000000000)
+        begin
+            alu_op_o <= `EXE_MFC0_OP;
+            alu_sel_o <= `EXE_RES_MOVE;
+            reg_write_addr_o <= inst_data[20:16];
+            reg_write_en_o <= `WRITE_ENABLE;
+            inst_valid <= `INST_VALID;   
+            reg_read_en_1_o <= 1'b0;
+            reg_read_en_2_o <= 1'b0;
+        end else if(inst_data[31:21] == 11'b01000000100 && inst_data[10:0] == 11'b00000000000) begin
+            alu_op_o <= `EXE_MTC0_OP;
+            alu_sel_o <= `EXE_RES_MOVE;
+            reg_write_en_o <= `WRITE_DISABLE;
+            inst_valid <= `INST_VALID;   
+            reg_read_en_1_o <= 1'b1;
+            reg_read_en_2_o <= 1'b0;
+            reg_read_addr_1_o <= inst_data[20:16];
+        end
+
         //control signals generated based on the opcode
         case(op)
 		    `EXE_SPECIAL_INST: begin    

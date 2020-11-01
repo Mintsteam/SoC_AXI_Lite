@@ -15,6 +15,10 @@
 `define CHIP_DISABLE 1'b0
 `define STOP 1'b1
 `define NOT_STOP 1'b0
+`define INTERRUPT_ASSERT 1'b1
+`define INTERRUPT_NOT_ASSERT 1'b0
+`define TRAP_ASSERT 1'b1
+`define TRAP_NOT_ASSERT 1'b0
 
 //³ý·¨div
 `define DIV_READY 2'b00

@@ -39,6 +39,23 @@ module EX(
 
     input wire[`REG_DATA_BUS] inst_data_i,
 
+    //stage mem forwarding cp0 RAW
+    input wire mem_cp0_reg_write_en,
+    input wire[4:0] mem_cp0_reg_write_addr,
+    input wire[`REG_DATA_BUS] mem_cp0_reg_write_data,
+
+    //stage wb forwarding cp0 RAW
+    input wire wb_cp0_reg_write_en,
+    input wire[4:0] wb_cp0_reg_write_addr,
+    input wire[`REG_DATA_BUS] wb_cp0_reg_write_data, 
+
+    input wire[`REG_DATA_BUS] cp0_reg_read_data_i,
+    
+    output reg[4:0] cp0_reg_read_addr_o,
+    output reg cp0_reg_write_en_o,
+    output reg[4:0] cp0_reg_write_addr_o,
+    output reg[`REG_DATA_BUS] cp0_reg_write_data_o,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,    
     output reg reg_write_en_o,
@@ -330,7 +347,17 @@ module EX(
             `EXE_MFLO_OP:move_out <= rst ? 0 : lo_out;
             `EXE_MOVZ_OP:move_out <= rst ? 0 : operand_1_i;
             `EXE_MOVN_OP:move_out <= rst ? 0 : operand_1_i;
-            default:move_out <= `ZEROWORD;
+            `EXE_MFC0_OP:begin
+                cp0_reg_read_addr_o <= inst_data_i[15:11];
+                move_out <= cp0_reg_read_data_i;
+                if(mem_cp0_reg_write_en == `WRITE_ENABLE && mem_cp0_reg_write_addr == inst_data_i[15:11])
+                begin
+                    move_out <= mem_cp0_reg_write_data;
+                end else if(wb_cp0_reg_write_en == `WRITE_ENABLE && wb_cp0_reg_write_addr == inst_data_i[15:11]) begin
+                    move_out <= wb_cp0_reg_write_data;
+                end
+            end
+            default:begin end
         endcase
     end
 
@@ -397,6 +424,24 @@ module EX(
         end
     end
 
+    always @ (*)
+    begin
+        if(rst == `RST_ENABLE)
+        begin
+            cp0_reg_write_addr_o <= 5'b00000;
+            cp0_reg_write_en_o <= `WRITE_DISABLE;
+            cp0_reg_write_data_o <= `ZEROWORD;
+        end else if(alu_op_i == `EXE_MTC0_OP) begin
+            cp0_reg_write_addr_o <= inst_data_i[15:11];
+            cp0_reg_write_en_o <= `WRITE_ENABLE;
+            cp0_reg_write_data_o <= operand_1_i;
+        end else begin
+            cp0_reg_write_addr_o <= 5'b00000;
+            cp0_reg_write_en_o <= `WRITE_DISABLE;
+            cp0_reg_write_data_o <= `ZEROWORD;
+        end
+    end
+    
     //forwarding
     always @ (*)
     begin

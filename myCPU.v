@@ -19,6 +19,10 @@ module myCPU(
     wire[`REG_DATA_BUS] data_o;
     wire rom_ce;
     wire ram_ce;
+    wire[5:0] interrupt;
+    wire timer_interrupt;
+
+    assign interrupt = {5'b00000, timer_interrupt};
 
     assign ram_ce = 1'b1;
 
@@ -29,6 +33,7 @@ module myCPU(
         .rst(rst),
         .rom_data_i(inst),
         .ram_read_data_i(data_o),
+        .interrupt_i(interrupt),
 
         //OUTPUT
         .rom_addr_o(inst_addr),
@@ -37,14 +42,17 @@ module myCPU(
         .ram_write_data_o(ram_write_data_o),
         .ram_write_en_o(ram_write_en_o),
         .ram_sel_o(ram_sel_o),
-        .ram_ce_o(ram_ce_o)
+        .ram_ce_o(ram_ce_o),
+        .timer_interrupt_o(timer_interrupt)
 
     );
     
     ROM ROM0(
+        
         .ce(rom_ce),
         .addr(inst_addr),
         .inst(inst)
+
     );
 
     RAM RAM0(

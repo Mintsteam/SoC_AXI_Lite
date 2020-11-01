@@ -25,6 +25,10 @@ module MEM(
 	input wire wb_LLbit_write_en_i,
 	input wire wb_LLbit_data_i,
 
+	input wire cp0_reg_write_en_i,
+	input wire[4:0] cp0_reg_write_addr_i,
+	input wire[`REG_DATA_BUS] cp0_reg_write_data_i,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,
     output reg reg_write_en_o,
@@ -40,7 +44,11 @@ module MEM(
 	output reg mem_ce_o,
 
 	output reg LLbit_write_en_o,
-	output reg LLbit_data_o
+	output reg LLbit_data_o,
+
+	output reg cp0_reg_write_en_o,
+	output reg[4:0] cp0_reg_write_addr_o,
+	output reg[`REG_DATA_BUS] cp0_reg_write_data_o
 
 );
 
@@ -83,6 +91,9 @@ module MEM(
 			mem_ce_o <= `CHIP_DISABLE;	  
 			LLbit_write_en_o <= 1'b0;
 			LLbit_data_o <= 1'b0;
+			cp0_reg_write_en_o <= `WRITE_DISABLE;
+			cp0_reg_write_addr_o <= 5'b00000;
+			cp0_reg_write_data_o <= `ZEROWORD;
 		end else begin
 		    reg_write_addr_o <= reg_write_addr_i;
 			reg_write_en_o <= reg_write_en_i;
@@ -97,6 +108,9 @@ module MEM(
 			mem_ce_o <= `CHIP_DISABLE;
 			LLbit_write_en_o <= 1'b0;
 			LLbit_data_o <= 1'b0;
+			cp0_reg_write_en_o <= cp0_reg_write_en_i;
+			cp0_reg_write_addr_o <= cp0_reg_write_addr_i;
+			cp0_reg_write_data_o <= cp0_reg_write_data_i;
 			case (alu_op_i)
 				`EXE_LB_OP: begin
 					mem_addr_o <= mem_addr_i;
