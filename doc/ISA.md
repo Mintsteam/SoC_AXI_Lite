@@ -10,7 +10,7 @@
 #### Purpose:
 To compare GPR[rs] and GPR[rt] then do a PC-relative conditional branch<br>
 #### Description:
-*if GPR[rs] = GPR[rt] then branch*<br><br>
+*if GPR[rs] == GPR[rt] then branch*<br><br>
 An 18-bit signed offset(the 16-bit offset field shifted left 2 bits) is added to the address of the instruction following the branch(not the branch itself), in the branch delay slot, to form a PC-relative effective target address. If the 2 GPRs are equal then branch to the effective target address after the instruction in the delay slot is executed<br>
 
 <div STYLE="page-break-after: always;"></div>
@@ -227,7 +227,7 @@ Because the CPU must load a word through an aligned address, so CPU need to find
 <div STYLE="page-break-after: always;"></div>
 
 ---
-### __LL__ `` p149
+### __LL__ `Load Linked Word` p149
 |   31-26    | 25-21 | 20-16 |  15-0  |
 | :--------: | :---: | :---: | :----: |
 | LL(110000) | base  |  rt   | offset |
@@ -243,29 +243,175 @@ The LL and SC instructions provide the primitives to implement atomic read-modif
 <div STYLE="page-break-after: always;"></div>
 
 ---
-### ____ `` p71
-| 31-26 | 25-21 | 20-16 |  15-0  |
-| :---: | :---: | :---: | :----: |
-|       |  rs   |       | offset |
-|   6   |   5   |   5   |   16   |
+### __TEQ__ `Trap if Equal` p262
+|      31-26      | 25-21 | 20-16 | 15-6  |     5-0     |
+| :-------------: | :---: | :---: | :---: | :---------: |
+| SPECIAL(000000) |  rs   |  rt   | code  | TEQ(110100) |
+|        6        |   5   |   5   |  10   |      6      |
 #### Format:
-><br>
+>TEQ rs, rt<br>
 #### Purpose:
-<br>
+To compare GPRs and do a conditional trap<br>
 #### Description:
-**<br><br>
+*if GPR[rs] == GPR[rt] then Trap*<br><br>
+Compare the contents of GPR[rs] and GPR[rt] as signed integers, if GPR[rs] is equal to GPR[rt], then take a Trap exception<br>
 
 <div STYLE="page-break-after: always;"></div>
 
 ---
-### ____ `` p71
-| 31-26 | 25-21 | 20-16 |  15-0  |
-| :---: | :---: | :---: | :----: |
-|       |  rs   |       | offset |
-|   6   |   5   |   5   |   16   |
+### __TEQI__ `Trap if Equal Immediate` p263
+|     31-26     | 25-21 |    20-16    |   15-0    |
+| :-----------: | :---: | :---------: | :-------: |
+| REGIMM(00001) |  rs   | TEQI(01100) | immediate |
+|       6       |   5   |      5      |    16     |
 #### Format:
-><br>
+>TEQI rs, immediate<br>
 #### Purpose:
-<br>
+To compare a GPR[rs] to a constant(imm) and do a conditional trap<br>
 #### Description:
-**<br><br>
+*if GPR[rs] == immediate then Trap*<br><br>
+Compare the contents of GPR[rs] and the 16-bit signed *immediate* as signed integers, if GPR[rs] is equal to *immediate*, then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TGE__ `Trap if Greater or Equal` p264
+|      31-26      | 25-21 | 20-16 | 15-6  |     5-0     |
+| :-------------: | :---: | :---: | :---: | :---------: |
+| SPECIAL(000000) |  rs   |  rt   | code  | TGE(110000) |
+|        6        |   5   |   5   |  10   |      6      |
+#### Format:
+>TGE rs, rt<br>
+#### Purpose:
+To compare GPRs and do a conditional trap<br>
+#### Description:
+*if GPR[rs] >= GPR[rt] then Trap*<br><br>
+Compare the contents of GPR[rs] and GPR[rt] as signed integers, if GPR[rs] is greater than or equal to GPR[rt], then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TGEI__ `Trap if Greater or Equal Immediate` p265
+|     31-26     | 25-21 |    20-16    |   15-0    |
+| :-----------: | :---: | :---------: | :-------: |
+| REGIMM(00001) |  rs   | TGEI(01000) | immediate |
+|       6       |   5   |      5      |    16     |
+#### Format:
+>TGEI rs, immediate<br>
+#### Purpose:
+To compare a GPR[rs] to a constant(imm) and do a conditional trap<br>
+#### Description:
+*if GPR[rs] >= immediate then Trap*<br><br>
+Compare the contents of GPR[rs] and the 16-bit signed *immediate* as signed integers, if GPR[rs] is greater than or equal to *immediate*, then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TGEU__ `Trap if Greater or Equal Unsigned` p267
+|      31-26      | 25-21 | 20-16 | 15-6  |     5-0      |
+| :-------------: | :---: | :---: | :---: | :----------: |
+| SPECIAL(000000) |  rs   |  rt   | code  | TGEU(110001) |
+|        6        |   5   |   5   |  10   |      6       |
+#### Format:
+>TGEU rs, rt<br>
+#### Purpose:
+To compare GPRs and do a conditional trap<br>
+#### Description:
+*if GPR[rs] >= GPR[rt] then Trap*<br><br>
+Compare the contents of GPR[rs] and GPR[rt] as unsigned integers, if GPR[rs] is greater than or equal to GPR[rt], then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TGEIU__ `Trap if Greater or Equal Immediate Unsigned` p266
+|     31-26     | 25-21 |    20-16     |   15-0    |
+| :-----------: | :---: | :----------: | :-------: |
+| REGIMM(00001) |  rs   | TGEIU(01001) | immediate |
+|       6       |   5   |      5       |    16     |
+#### Format:
+>TGEIU rs, immediate<br>
+#### Purpose:
+To compare GPR[rs] to a constant and do a conditional trap<br>
+#### Description:
+*if GPR[rs] >= immediate then Trap*<br><br>
+Compare the contents of GPR[rs] and the 16-bit signed *immediate* as unsigned integers, if GPR[rs] is greater than or equal to *immediate*, then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TLT__ `Trap if Less Than` p274
+|      31-26      | 25-21 | 20-16 | 15-6  |     5-0     |
+| :-------------: | :---: | :---: | :---: | :---------: |
+| SPECIAL(000000) |  rs   |  rt   | code  | TLT(110010) |
+|        6        |   5   |   5   |  10   |      6      |
+#### Format:
+>TLT rs, rt<br>
+#### Purpose:
+To compare GPRs and do a conditional trap<br>
+#### Description:
+*if GPR[rs] < GPR[rt] then Trap*<br><br>
+Compare the contents of GPR[rs] and GPR[rt] as signed integers, if GPR[rs] is less than GPR[rt], then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TLTI__ `Trap if Less Than Immediate` p275
+|     31-26     | 25-21 |    20-16    |   15-0    |
+| :-----------: | :---: | :---------: | :-------: |
+| REGIMM(00001) |  rs   | TLTI(01010) | immediate |
+|       6       |   5   |      5      |    16     |
+#### Format:
+>TLTI rs, immediate<br>
+#### Purpose:
+To compare GPR[rs] to a constant and do a conditional trap<br>
+#### Description:
+*if GPR[rs] < immediate then Trap*<br><br>
+Compare the contents of GPR[rs] and the 16-bit signed *immediate* as signed integers, if GPR[rs] is less than *immediate*, then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TLTIU__ `Trap if Less Than Immediate` p276
+|     31-26     | 25-21 |    20-16     |   15-0    |
+| :-----------: | :---: | :----------: | :-------: |
+| REGIMM(00001) |  rs   | TLTIU(01011) | immediate |
+|       6       |   5   |      5       |    16     |
+#### Format:
+>TLTIU rs, immediate<br>
+#### Purpose:
+To compare GPR[rs] to a constant and do a conditional trap<br>
+#### Description:
+*if GPR[rs] < immediate then Trap*<br><br>
+Compare the contents of GPR[rs] and the 16-bit signed *immediate* as unsigned integers, if GPR[rs] is less than *immediate*, then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TLTU__ `Trap if Less Than Unsigned` p277
+|      31-26      | 25-21 | 20-16 | 15-6  |     5-0     |
+| :-------------: | :---: | :---: | :---: | :---------: |
+| SPECIAL(000000) |  rs   |  rt   | code  | TLT(110011) |
+|        6        |   5   |   5   |  10   |      6      |
+#### Format:
+>TLTU rs, rt<br>
+#### Purpose:
+To compare GPRs and do a conditional trap<br>
+#### Description:
+*if GPR[rs] < GPR[rt] then Trap*<br><br>
+Compare the contents of GPR[rs] and GPR[rt] as unsigned integers, if GPR[rs] is less than GPR[rt], then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __TNE__ `Trap if Not Equal` p278
+|      31-26      | 25-21 | 20-16 | 15-6  |     5-0     |
+| :-------------: | :---: | :---: | :---: | :---------: |
+| SPECIAL(000000) |  rs   |  rt   | code  | TLT(110110) |
+|        6        |   5   |   5   |  10   |      6      |
+#### Format:
+>TNE rs, rt<br>
+#### Purpose:
+To compare GPRs and do a conditional trap<br>
+#### Description:
+*if GPR[rs] != GPR[rt] then Trap*<br><br>
+Compare the contents of GPR[rs] and GPR[rt] as signed integers, if GPR[rs] is not equal to GPR[rt], then take a Trap exception<br>

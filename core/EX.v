@@ -50,6 +50,9 @@ module EX(
     input wire[`REG_DATA_BUS] wb_cp0_reg_write_data, 
 
     input wire[`REG_DATA_BUS] cp0_reg_read_data_i,
+
+    input wire[31:0] exception_type_i,
+    input wire[`REG_DATA_BUS] current_inst_addr_i,
     
     output reg[4:0] cp0_reg_read_addr_o,
     output reg cp0_reg_write_en_o,
@@ -76,7 +79,11 @@ module EX(
     output wire[`REG_DATA_BUS] mem_addr_o,
     output wire[`REG_DATA_BUS] operand_2_o, 
 
-    output reg stall_req
+    output reg stall_req,
+
+    output wire[31:0] exception_type_o,
+    output wire is_in_delayslot_o,
+    output wire[`REG_DATA_BUS] current_inst_addr_o
 
 );
 
@@ -90,6 +97,8 @@ module EX(
     reg[`DOUBLE_REG_DATA_BUS] hilo_temp1;
     reg madd_msub_stall_req;
     reg div_stall_req;
+    reg trap_assert;
+    reg overflow_assert;
 
     wire overflow;
     wire equal;
@@ -105,16 +114,22 @@ module EX(
     assign mem_addr_o = operand_1_i + {{16{inst_data_i[15]}}, inst_data_i[15:0]};
     assign operand_2_o = operand_2_i;
 
+    assign exception_type_o = {exception_type_i[31:12], overflow_assert, trap_assert, exception_type_i[9:8], 8'h00};
+
+    assign current_inst_addr_o = current_inst_addr_i;
+
+    assign is_in_delayslot_o = is_in_delayslot_i;
+
     //******************************phase I****execute******************************//
 
     //execute arithmethic instructions
-    assign operand_2_complement = ((alu_op_i == `EXE_SUB_OP) || (alu_op_i == `EXE_SUBU_OP) || (alu_op_i == `EXE_SLT_OP)) ? (~operand_2_i) + 1 : operand_2_i;
+    assign operand_2_complement = ((alu_op_i == `EXE_SUB_OP) || (alu_op_i == `EXE_SUBU_OP) || (alu_op_i == `EXE_SLT_OP) || (alu_op_i == `EXE_TLT_OP) || (alu_op_i == `EXE_TLTI_OP) || (alu_op_i == `EXE_TGE_OP) || (alu_op_i == `EXE_TGEI_OP)) ? (~operand_2_i) + 1 : operand_2_i;
 
     assign sum_out = operand_1_i + operand_2_complement;
 
     assign overflow = ((!operand_1_i[31] && !operand_2_complement[31]) && sum_out[31]) || ((operand_1_i[31] && operand_2_complement[31]) && (!sum_out[31]));
 
-    assign smaller = ((alu_op_i == `EXE_SLT_OP)) ? ((operand_1_i[31] && !operand_2_i[31]) || (operand_1_i[31] && !operand_2_i[31] && sum_out[31]) || (operand_1_i[31] && operand_2_i[31] && sum_out[31])) : (operand_1_i < operand_2_i);
+    assign smaller = ((alu_op_i == `EXE_SLT_OP) || (alu_op_i == `EXE_TLT_OP) || (alu_op_i == `EXE_TLTI_OP) || (alu_op_i == `EXE_TGE_OP) || (alu_op_i == `EXE_TGEI_OP)) ? ((operand_1_i[31] && !operand_2_i[31]) || (operand_1_i[31] && !operand_2_i[31] && sum_out[31]) || (operand_1_i[31] && operand_2_i[31] && sum_out[31])) : (operand_1_i < operand_2_i);
 
     assign operand_1_not = ~operand_1_i;
 
@@ -177,6 +192,44 @@ module EX(
                 end
             endcase 
         end
+    end
+
+    //trap judge logic
+    always @ (*) 
+    begin
+        if(rst == `RST_ENABLE)
+        begin
+            trap_assert <= `TRAP_NOT_ASSERT;
+        end else begin
+            trap_assert <= `TRAP_NOT_ASSERT;
+            case(alu_op_i)
+                `EXE_TEQ_OP, `EXE_TEQI_OP: begin
+                    if(operand_1_i == operand_2_i)
+                    begin
+                        trap_assert <= `TRAP_ASSERT;
+                    end
+                end
+                `EXE_TGE_OP, `EXE_TGEI_OP, `EXE_TGEIU_OP, `EXE_TGEU_OP: begin
+                    if(~smaller)
+                    begin
+                        trap_assert <= `TRAP_ASSERT;
+                    end
+                end
+                `EXE_TLT_OP, `EXE_TLTI_OP, `EXE_TLTIU_OP, `EXE_TLTIU_OP: begin
+                    if(smaller)
+                    begin
+                        trap_assert <= `TRAP_ASSERT;
+                    end
+                end
+                `EXE_TNE_OP, `EXE_TNEI_OP: begin
+                    if(operand_1_i != operand_2_i)
+                    begin
+                        trap_assert <= `TRAP_ASSERT;
+                    end
+                end 
+                default: trap_assert <= `TRAP_NOT_ASSERT;
+            endcase
+        end    
     end
 
     assign operand_multiplicand = (((alu_op_i == `EXE_MUL_OP) || (alu_op_i == `EXE_MULT_OP) || (alu_op_i == `EXE_MADD_OP) || (alu_op_i == `EXE_MSUB_OP)) && (operand_1_i[31] == 1'b1)) ? (~operand_1_i + 1) : operand_1_i;
@@ -370,8 +423,10 @@ module EX(
         if(((alu_op_i == `EXE_ADD_OP) || (alu_op_i == `EXE_ADDI_OP) || (alu_op_i == `EXE_SUB_OP)) && (overflow == 1'b1)) 
         begin
 	 	    reg_write_en_o  <= `WRITE_DISABLE;
+             overflow_assert <= 1'b1;
 	    end else begin
 	        reg_write_en_o <= reg_write_en_i;	
+            overflow_assert <= 1'b0;
 	    end
 	    
 	    case (alu_sel_i) 

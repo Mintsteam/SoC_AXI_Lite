@@ -2,6 +2,7 @@
 `include "../define/global.vh"
 `include "../define/regfile.vh"
 `include "../define/opcode.vh"
+`include "../define/cp0.vh"
 
 module MEM(
 
@@ -29,6 +30,18 @@ module MEM(
 	input wire[4:0] cp0_reg_write_addr_i,
 	input wire[`REG_DATA_BUS] cp0_reg_write_data_i,
 
+	input wire[31:0] exception_type_i,
+	input wire is_in_delayslot_i,
+	input wire[`REG_DATA_BUS] current_inst_addr_i,
+
+	input wire[`REG_DATA_BUS] cp0_status_i,
+	input wire[`REG_DATA_BUS] cp0_cause_i,
+	input wire[`REG_DATA_BUS] cp0_epc_i,
+
+	input wire wb_cp0_reg_write_en,
+	input wire[4:0] wb_cp0_reg_write_addr,
+	input wire[`REG_DATA_BUS] wb_cp0_reg_write_data,
+
     output reg[`REG_DATA_BUS] reg_write_data_o,
     output reg[`REG_ADDR_BUS] reg_write_addr_o,
     output reg reg_write_en_o,
@@ -48,14 +61,97 @@ module MEM(
 
 	output reg cp0_reg_write_en_o,
 	output reg[4:0] cp0_reg_write_addr_o,
-	output reg[`REG_DATA_BUS] cp0_reg_write_data_o
+	output reg[`REG_DATA_BUS] cp0_reg_write_data_o,
+
+	output reg[31:0] exception_type_o,
+	output wire[`REG_DATA_BUS] cp0_epc_o,
+	output wire is_in_delayslot_o,
+
+	output wire[`REG_DATA_BUS] current_inst_addr_o
 
 );
 
 	reg LLbit;
-
 	wire[`REG_DATA_BUS] zero32;
 	reg mem_we;
+	reg[`REG_DATA_BUS] cp0_status;
+	reg[`REG_DATA_BUS] cp0_cause;
+	reg[`REG_DATA_BUS] cp0_epc;
+
+	assign mem_write_en_o = mem_we;
+	assign zero32 = `ZEROWORD;
+	
+	assign is_in_delayslot_o = is_in_delayslot_i;
+
+	assign current_inst_addr_o = current_inst_addr_i;
+
+	always @ (*)
+	begin
+		if(rst == `RST_ENABLE)
+		begin
+			cp0_status <= `ZEROWORD;
+		end	else if((wb_cp0_reg_write_en == `WRITE_ENABLE) && (wb_cp0_reg_write_addr == `CP0_REG_STATUS)) begin
+			cp0_status <= wb_cp0_reg_write_data;
+		end else begin
+			cp0_status <= cp0_status_i;
+		end
+	end
+
+	always @ (*)
+	begin
+		if(rst == `RST_ENABLE)
+		begin
+			cp0_epc <= `ZEROWORD;
+		end	else if((wb_cp0_reg_write_en == `WRITE_ENABLE) && (wb_cp0_reg_write_addr == `CP0_REG_EPC)) begin
+			cp0_epc <= wb_cp0_reg_write_data;
+		end else begin
+			cp0_epc <= cp0_epc_i;
+		end
+	end
+
+	assign cp0_epc_o = cp0_epc;
+
+	always @ (*)
+	begin
+		if(rst == `RST_ENABLE)
+		begin
+			cp0_cause <= `ZEROWORD;
+		end	else if((wb_cp0_reg_write_en == `WRITE_ENABLE) && (wb_cp0_reg_write_addr == `CP0_REG_CAUSE)) begin
+			cp0_cause[9:8] <= wb_cp0_reg_write_data[9:8];
+			cp0_cause[22] <= wb_cp0_reg_write_data[22];
+			cp0_cause[23] <= wb_cp0_reg_write_data[23];
+		end else begin
+			cp0_cause <= cp0_cause_i;
+		end
+	end
+
+	always @ (*) begin
+		if(rst == `RST_ENABLE) 
+		begin
+			exception_type_o <= `ZEROWORD;
+		end else begin
+			exception_type_o <= `ZEROWORD;
+			if(current_inst_addr_i != `ZEROWORD) 
+			begin
+				if(((cp0_cause[15:8] & (cp0_status[15:8])) != 8'h00) && (cp0_status[1] == 1'b0) && 
+							(cp0_status[0] == 1'b1)) begin
+					exception_type_o <= 32'h00000001;        //interrupt
+				end else if(exception_type_i[8] == 1'b1) begin
+			  		exception_type_o <= 32'h00000008;        //syscall
+				end else if(exception_type_i[9] == 1'b1) begin
+					exception_type_o <= 32'h0000000a;        //inst_invalid
+				end else if(exception_type_i[10] ==1'b1) begin
+					exception_type_o <= 32'h0000000d;        //trap
+				end else if(exception_type_i[11] == 1'b1) begin  //ov
+					exception_type_o <= 32'h0000000c;
+				end else if(exception_type_i[12] == 1'b1) begin  //·µ»ØÖ¸Áî
+					exception_type_o <= 32'h0000000e;
+				end
+			end	
+		end
+	end
+
+	assign mem_write_en_o = mem_we & (~(|exception_type_o));
 
 	always @ (*) 
 	begin
@@ -71,9 +167,6 @@ module MEM(
 			end
 		end
 	end
-
-	assign mem_write_en_o = mem_we;
-	assign zero32 = `ZEROWORD;
 
     always @ (*) begin
 		if(rst == `RST_ENABLE) 

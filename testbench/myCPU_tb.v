@@ -16,7 +16,7 @@ module myCPU_tb();
     begin
         rst = `RST_ENABLE;
         #195 rst = `RST_DISABLE;
-        #4100 $stop;
+        #10000 $stop;
     end
 
     myCPU myCPU0(

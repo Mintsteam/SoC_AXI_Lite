@@ -13,6 +13,9 @@ module PC(
     input wire branch_flag_i,
     input wire[`REG_DATA_BUS] branch_target_addr_i,
 
+    input wire flush,
+    input wire[`REG_DATA_BUS] new_pc,
+
     output reg[`INST_ADDR_BUS] pc,  
     output reg ce  
     
@@ -33,12 +36,17 @@ module PC(
         if(ce == `CHIP_DISABLE)
         begin
             pc <= 32'h00000000;
-        end else if(stall[0] == `NOT_STOP) begin
-            if(branch_flag_i == `BRANCH)
+        end else begin
+            if(flush == 1'b1)
             begin
-                pc <= branch_target_addr_i;
-            end else begin
-                pc <= pc + 4'h4;
+                pc <= new_pc;
+            end else if(stall[0] == `NOT_STOP) begin
+                if(branch_flag_i == `BRANCH)
+                begin
+                    pc <= branch_target_addr_i;
+                end else begin
+                    pc <= pc + 4'h4;
+                end
             end
         end
     end

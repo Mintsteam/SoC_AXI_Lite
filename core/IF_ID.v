@@ -10,6 +10,7 @@ module IF_ID(
     input wire [`INST_DATA_BUS] if_inst,
 
     input wire[5:0] stall,
+    input wire flush,
 
     output reg[`INST_ADDR_BUS] id_pc,
     output reg[`INST_DATA_BUS] id_inst
@@ -20,6 +21,9 @@ module IF_ID(
     begin
         if(rst == `RST_ENABLE)
         begin
+            id_pc <= `ZEROWORD;
+            id_inst <= `ZEROWORD;
+        end else if(flush == 1'b1) begin
             id_pc <= `ZEROWORD;
             id_inst <= `ZEROWORD;
         end else if(stall[1] == `STOP && stall[2] == `NOT_STOP) begin

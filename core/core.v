@@ -41,6 +41,8 @@ module core(
     wire[`REG_ADDR_BUS] id_reg_write_addr_o;
     wire[`REG_DATA_BUS] link_addr_o;
     wire[`REG_DATA_BUS] inst_data_o;
+    wire[31:0] exception_type_o;
+    wire[`REG_DATA_BUS] current_inst_addr_o;
 
     //connect ID_EX to EX
     wire[`ALU_OP_BUS] ex_alu_op_i;
@@ -53,6 +55,8 @@ module core(
     wire[`REG_DATA_BUS] ex_link_addr;
     wire next_inst_in_delayslot_o;
     wire[`REG_DATA_BUS] ex_inst_data;
+    wire [31:0] ex_exception_type;
+    wire[`REG_DATA_BUS] ex_current_inst_addr;
 
     //connect ID_EX to ID
     wire is_in_delayslot_o;
@@ -73,6 +77,9 @@ module core(
     wire[`REG_DATA_BUS] cp0_reg_write_data_o1;
     wire[4:0] cp0_reg_write_addr_o1;
     wire cp0_reg_write_en_o1;
+    wire[31:0] exception_type_o1;
+    wire is_in_delayslot_o1;
+    wire[`REG_DATA_BUS] current_inst_addr_o1;
 
     //connect EX to DIV
     wire[`REG_DATA_BUS] div_operand_1_o;
@@ -93,6 +100,9 @@ module core(
     wire[`REG_DATA_BUS] mem_cp0_reg_write_data;
     wire[4:0] mem_cp0_reg_write_addr;
     wire mem_cp0_reg_write_en;
+    wire[31:0] mem_exception_type;
+    wire mem_is_in_delayslot;
+    wire[`REG_DATA_BUS] mem_current_inst_addr;
 
     //connect MEM to MEM_WB
     wire mem_reg_write_en_o;
@@ -105,7 +115,10 @@ module core(
     wire LLbit_data_o;
     wire[`REG_DATA_BUS] cp0_reg_write_data_o;
     wire[4:0] cp0_reg_write_addr_o;
-    wire cp0_reg_write_en_o;    
+    wire cp0_reg_write_en_o;   
+
+    //connect MEM to CTRL
+    wire[`REG_DATA_BUS] cp0_epc_o;
 
     //connect MEM_WB to WB
     wire wb_reg_write_en_i;
@@ -123,6 +136,9 @@ module core(
     wire[`REG_DATA_BUS] wb_cp0_reg_write_data;
     wire[4:0] wb_cp0_reg_write_addr;
     wire wb_cp0_reg_write_en;
+    wire[31:0] exception_type_o2;
+    wire[`REG_DATA_BUS] current_inst_addr_o2;
+    wire is_in_delayslot_o2; 
 
     //connect ID to REGFIE
     wire reg_read_en_1;
@@ -143,6 +159,10 @@ module core(
     wire id_stall_req;
     wire ex_stall_req;
 
+    //connect CTRL to PC,ID_EX,EX_MEM,MEM_WB,LLbit
+    wire flush;
+    wire[`INST_ADDR_BUS] new_pc;
+
     //connect EX_MEM to EX
     wire[1:0] ex_mem_count_o;
     wire[`DOUBLE_REG_DATA_BUS] ex_mem_hilo_o;
@@ -157,6 +177,7 @@ module core(
     //connect CP0 to EX
     wire[`REG_DATA_BUS] read_data_o;
 
+    //connect CP0 to MEM
     wire[`REG_DATA_BUS] count_o;
     wire[`REG_DATA_BUS] compare_o;
     wire[`REG_DATA_BUS] status_o;
@@ -176,6 +197,8 @@ module core(
 
         //INPUT FROM CTRL
         .stall(stall),
+        .flush(flush),
+        .new_pc(new_pc),
         
         //OUTPUT TO IF_ID
         .pc(pc),
@@ -196,6 +219,7 @@ module core(
 
         //INPUT FROM CTRL
         .stall(stall),
+        .flush(flush),
 
         //OUTPUT TO ID
         .id_pc(id_pc_o),
@@ -238,7 +262,7 @@ module core(
         .mem_reg_write_data_i(mem_reg_write_data_o),
         .mem_reg_write_addr_i(mem_reg_write_addr_o),
 
-        //OUTPUT TO ID/EX 
+        //OUTPUT TO ID_EX 
         .alu_op_o(id_alu_op_o),
         .alu_sel_o(id_alu_sel_o),
         .operand_1_o(id_operand_1_o),
@@ -249,6 +273,8 @@ module core(
         .link_addr_o(link_addr_o),
         .next_inst_in_delayslot_o(next_inst_in_delayslot_o),
         .inst_data_o(inst_data_o),
+        .exception_type_o(exception_type_o),
+        .current_inst_addr_o(current_inst_addr_o),
 
         //OUTPUT TO CTRL
         .stall_req(id_stall_req)
@@ -293,9 +319,12 @@ module core(
         .id_is_in_delayslot(is_in_delayslot_o),
         .next_inst_in_delayslot_i(next_inst_in_delayslot_o),
         .id_inst_data(inst_data_o),
+        .id_exception_type(exception_type_o),
+        .id_current_inst_addr(current_inst_addr_o),
 
         //INPUT FROM CTRL
         .stall(stall),
+        .flush(flush),
 
         //OUTPUT TO EX
         .ex_alu_op(ex_alu_op_i),
@@ -307,7 +336,9 @@ module core(
         .ex_link_addr(ex_link_addr),
         .ex_is_in_delayslot(ex_is_in_delayslot),
         .is_in_delayslot_o(is_in_delayslot_o),
-        .ex_inst_data(ex_inst_data)
+        .ex_inst_data(ex_inst_data),
+        .ex_exception_type(ex_exception_type),
+        .ex_current_inst_addr(ex_current_inst_addr)
 
     );
 
@@ -325,6 +356,8 @@ module core(
         .link_addr_i(ex_link_addr),
         .is_in_delayslot_i(ex_is_in_delayslot),
         .inst_data_i(ex_inst_data),
+        .exception_type_i(ex_exception_type),
+        .current_inst_addr_i(ex_current_inst_addr),
 
         //INPUT FROM HILO
         .hi_read_data_i(hi_read_data_o),
@@ -375,6 +408,9 @@ module core(
         .cp0_reg_write_data_o(cp0_reg_write_data_o1),
         .cp0_reg_write_addr_o(cp0_reg_write_addr_o1),
         .cp0_reg_write_en_o(cp0_reg_write_en_o1),
+        .exception_type_o(exception_type_o1),
+        .current_inst_addr_o(current_inst_addr_o1),
+        .is_in_delayslot_o(is_in_delayslot_o1),
 
         //OUTPUT TO CTRL
         .stall_req(ex_stall_req),
@@ -407,9 +443,13 @@ module core(
         .ex_cp0_reg_write_data(cp0_reg_write_data_o1),
         .ex_cp0_reg_write_addr(cp0_reg_write_addr_o1),
         .ex_cp0_reg_write_en(cp0_reg_write_en_o1),
+        .ex_exception_type(exception_type_o1),
+        .ex_current_inst_addr(current_inst_addr_o1),
+        .ex_is_in_delayslot(is_in_delayslot_o1),
 
         //INPUT FROM CTRL
         .stall(stall),
+        .flush(flush),
 
         //OUTPUT TO MEM
         .mem_reg_write_data(mem_reg_write_data_i),
@@ -424,6 +464,9 @@ module core(
         .mem_cp0_reg_write_data(mem_cp0_reg_write_data),
         .mem_cp0_reg_write_addr(mem_cp0_reg_write_addr),
         .mem_cp0_reg_write_en(mem_cp0_reg_write_en),
+        .mem_exception_type(mem_exception_type),
+        .mem_current_inst_addr(mem_current_inst_addr),
+        .mem_is_in_delayslot(mem_is_in_delayslot),
 
         //OUTPUT TO EX
         .count_o(ex_mem_count_o),
@@ -448,6 +491,14 @@ module core(
         .cp0_reg_write_data_i(mem_cp0_reg_write_data),
         .cp0_reg_write_addr_i(mem_cp0_reg_write_addr),
         .cp0_reg_write_en_i(mem_cp0_reg_write_en),
+        .exception_type_i(mem_exception_type),
+        .current_inst_addr_i(mem_current_inst_addr),
+        .is_in_delayslot_i(mem_is_in_delayslot),
+
+        //INPUT FROM MEM_WB
+        .wb_cp0_reg_write_en(wb_cp0_reg_write_en),
+        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr),
+        .wb_cp0_reg_write_data(wb_cp0_reg_write_data),
 
         //INPUT FROM RAM
         .mem_read_data_i(ram_read_data_i),
@@ -456,6 +507,11 @@ module core(
         .LLbit_i(LLbit_o),
         .wb_LLbit_write_en_i(wb_LLbit_write_en),
         .wb_LLbit_data_i(wb_LLbit_data),
+
+        //INPUT FROM CP0
+        .cp0_status_i(status_o),
+        .cp0_cause_i(cause_o),
+        .cp0_epc_i(epc_o),
 
         //OUTPUT TO MEM_WB
         .reg_write_data_o(mem_reg_write_data_o),
@@ -477,7 +533,15 @@ module core(
         .mem_write_en_o(ram_write_en_o),
         .mem_sel_o(ram_sel_o),
         .mem_write_data_o(ram_write_data_o),
-        .mem_ce_o(ram_ce_o)
+        .mem_ce_o(ram_ce_o),
+
+        //OUTPUT TO CP0
+        .exception_type_o(exception_type_o2),
+        .current_inst_addr_o(current_inst_addr_o2),
+        .is_in_delayslot_o(is_in_delayslot_o2),
+
+        //OUTPUT TO CTRL
+        .cp0_epc_o(cp0_epc_o)
 
     );
 
@@ -501,6 +565,7 @@ module core(
 
         //INPUT FROM CTRL
         .stall(stall),
+        .flush(flush),
 
         //OUTPUT TO WB
         .wb_reg_write_data(wb_reg_write_data_i),
@@ -547,8 +612,18 @@ module core(
         //INPUT FROM EX
         .ex_stall_req(ex_stall_req),
 
+        //INPUT FROM MEM
+        .exception_type_i(exception_type_o2),
+
+        //INPUT FROM CTRL
+        .cp0_epc_i(cp0_epc_o),
+
         //OUTPUT
-        .stall(stall)
+        .stall(stall),
+        .flush(flush),
+
+        //OUTPUT TO PC
+        .new_pc(new_pc)
 
     );
 
@@ -562,7 +637,7 @@ module core(
         .operand_2_i(div_operand_2_o),
         .start_div_i(div_start_o),
         .signed_div_i(signed_div_o),
-        .discard_div(1'b0),
+        .discard_div(flush),
 
         //OUTPUT TO EX
         .div_out(div_out),
@@ -575,7 +650,7 @@ module core(
         //INPUT
         .clk(clk),
         .rst(rst),
-        .flush(1'b0),
+        .flush(flush),
 
         //INPUT FROM MEM_WB
         .LLbit_write_en(wb_LLbit_write_en),
@@ -592,6 +667,11 @@ module core(
         .clk(clk),
         .rst(rst),
         .interrupt_i(interrupt_i),
+
+        //INPUT FROM MEM
+        .exception_type_i(exception_type_o2),
+        .current_inst_addr_i(current_inst_addr_o2),
+        .is_in_delayslot_i(is_in_delayslot_o2),
         
         //INPUT FROM MEM_WB
         .write_data_i(wb_cp0_reg_write_data),

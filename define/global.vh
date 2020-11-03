@@ -8,7 +8,7 @@
 `define ALU_OP_BUS 7:0
 `define ALU_SEL_BUS 2:0
 `define INST_VALID 1'b0
-`define INST_DISVALID 1'b1
+`define INST_INVALID 1'b1
 `define TRUE 1'b1
 `define FALSE 1'b0
 `define CHIP_ENABLE 1'b1

@@ -51,7 +51,9 @@ module ID(
 
     output wire[`REG_DATA_BUS] inst_data_o,
 
-    output wire stall_req
+    output wire stall_req,
+    output wire[31:0] exception_type_o,
+    output wire[`REG_DATA_BUS] current_inst_addr_o
 
 );
 
@@ -65,6 +67,17 @@ module ID(
     wire[`REG_DATA_BUS] pc_plus_4;
 
     wire[`REG_DATA_BUS] branch_addr;
+
+    reg exception_is_syscall;
+    reg exception_is_eret;
+
+    reg[`REG_DATA_BUS] imm;
+
+    reg inst_valid;
+
+    assign exception_type_o = {19'b0, exception_is_eret, 2'b0, inst_valid, exception_is_syscall, 8'b0};
+
+    assign current_inst_addr_o = inst_addr;
 
     reg stall_req_for_reg1_loadrelate;
     reg stall_req_for_reg2_loadrelate;
@@ -82,10 +95,6 @@ module ID(
 
     assign branch_addr = {{14{inst_data[15]}}, inst_data[15:0], 2'b00};
 
-    reg[`REG_DATA_BUS] imm;
-
-    reg inst_valid;
-
     /*****decode*****/
     //signal initialization
     always @ (*) 
@@ -98,31 +107,14 @@ module ID(
         alu_sel_o <= `EXE_RES_NOP;
         reg_write_addr_o <= rst ? 0 : inst_data[15:11];
         reg_write_en_o <= `WRITE_DISABLE;
-        inst_valid <= `INST_VALID;   
+        inst_valid <= rst ? `INST_VALID : `INST_INVALID;   
         reg_read_en_1_o <= 0;
         reg_read_en_2_o <= 0;
         reg_read_addr_1_o <= rst ? 0 : inst_data[25:21];
         reg_read_addr_2_o <= rst ? 0 : inst_data[20:16];		
         imm <= `ZEROWORD;
-
-        if(inst_data[31:21] == 11'b01000000000 && inst_data[10:0] == 11'b00000000000)
-        begin
-            alu_op_o <= `EXE_MFC0_OP;
-            alu_sel_o <= `EXE_RES_MOVE;
-            reg_write_addr_o <= inst_data[20:16];
-            reg_write_en_o <= `WRITE_ENABLE;
-            inst_valid <= `INST_VALID;   
-            reg_read_en_1_o <= 1'b0;
-            reg_read_en_2_o <= 1'b0;
-        end else if(inst_data[31:21] == 11'b01000000100 && inst_data[10:0] == 11'b00000000000) begin
-            alu_op_o <= `EXE_MTC0_OP;
-            alu_sel_o <= `EXE_RES_MOVE;
-            reg_write_en_o <= `WRITE_DISABLE;
-            inst_valid <= `INST_VALID;   
-            reg_read_en_1_o <= 1'b1;
-            reg_read_en_2_o <= 1'b0;
-            reg_read_addr_1_o <= inst_data[20:16];
-        end
+        exception_is_syscall <= `FALSE;
+        exception_is_eret <= `FALSE;
 
         //control signals generated based on the opcode
         case(op)
@@ -130,48 +122,55 @@ module ID(
 	    	    case (op2)
 	    		    5'b00000: begin  
 					    case (op3)
-	    				    `EXE_OR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_OR_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b1};
-	    				    `EXE_AND:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_AND_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b1};
-		    			    `EXE_NOR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_NOR_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b1};
-						    `EXE_SLLV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SLL_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b1};
-						    `EXE_SRLV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SRL_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b1}; 
-						    `EXE_SRAV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SRA_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b1};
-						    `EXE_SYNC:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_NOP_OP, `EXE_RES_NOP  , 1'b0, 1'b1, 1'b1};
-					        `EXE_MFHI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MFHI_OP, `EXE_RES_MOVE, 1'b0, 1'b0, 1'b1};
-						    `EXE_MFLO:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MFLO_OP, `EXE_RES_MOVE, 1'b0, 1'b0, 1'b1};
-					        `EXE_MTHI:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MTHI_OP, 1'b1, 1'b0, 1'b1};
-					        `EXE_MTLO:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MTLO_OP, 1'b1, 1'b0, 1'b1};
-					        `EXE_MOVN:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {operand_2_o ? 1:0, `EXE_MOVN_OP, `EXE_RES_MOVE, 1'b1, 1'b1, 1'b1};
-					        `EXE_MOVZ:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {operand_2_o ? 0:1, `EXE_MOVZ_OP, `EXE_RES_MOVE, 1'b1, 1'b1, 1'b1};
-                            `EXE_SLT:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SLT_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
-                            `EXE_SLTU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SLTU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
-                            `EXE_ADD:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_ADD_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
-                            `EXE_ADDU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_ADDU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
-                            `EXE_SUB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SUB_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
-                            `EXE_SUBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SUBU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
-                            `EXE_MULT:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MULT_OP, 1'b1, 1'b1, 1'b1};
-                            `EXE_MULTU:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MULTU_OP, 1'b1, 1'b1, 1'b1};
-                            `EXE_DIV:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_DIV_OP, 1'b1, 1'b1, 1'b1};
-                            `EXE_DIVU:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_DIVU_OP, 1'b1, 1'b1, 1'b1};
-                            `EXE_JR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, link_addr_o, branch_target_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid} <= {1'b1, `EXE_JR_OP, `EXE_RES_JUMP_BRANCH, 1'b1, 1'b0, `ZEROWORD, operand_1_o, `BRANCH, `IN_DELAY_SLOT, 1'b1};
-                            `EXE_JALR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, link_addr_o, branch_target_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid} <= {1'b1, `EXE_JALR_OP, `EXE_RES_JUMP_BRANCH, 1'b1, 1'b0, pc_plus_8, operand_1_o, `BRANCH, `IN_DELAY_SLOT, 1'b1};
+	    				    `EXE_OR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_OR_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b0};
+	    				    `EXE_AND:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_AND_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b0};
+		    			    `EXE_NOR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_NOR_OP, `EXE_RES_LOGIC, 1'b1, 1'b1, 1'b0};
+						    `EXE_SLLV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SLL_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b0};
+						    `EXE_SRLV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SRL_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b0}; 
+						    `EXE_SRAV:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SRA_OP, `EXE_RES_SHIFT, 1'b1, 1'b1, 1'b0};
+						    `EXE_SYNC:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_NOP_OP, `EXE_RES_NOP  , 1'b0, 1'b1, 1'b0};
+					        `EXE_MFHI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MFHI_OP, `EXE_RES_MOVE, 1'b0, 1'b0, 1'b0};
+						    `EXE_MFLO:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MFLO_OP, `EXE_RES_MOVE, 1'b0, 1'b0, 1'b0};
+					        `EXE_MTHI:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MTHI_OP, 1'b1, 1'b0, 1'b0};
+					        `EXE_MTLO:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MTLO_OP, 1'b1, 1'b0, 1'b0};
+					        `EXE_MOVN:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {operand_2_o ? 1:0, `EXE_MOVN_OP, `EXE_RES_MOVE, 1'b1, 1'b1, 1'b0};
+					        `EXE_MOVZ:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {operand_2_o ? 0:1, `EXE_MOVZ_OP, `EXE_RES_MOVE, 1'b1, 1'b1, 1'b0};
+                            `EXE_SLT:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SLT_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b0};
+                            `EXE_SLTU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SLTU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b0};
+                            `EXE_ADD:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_ADD_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b0};
+                            `EXE_ADDU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_ADDU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b0};
+                            `EXE_SUB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SUB_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b0};
+                            `EXE_SUBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_SUBU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b0};
+                            `EXE_MULT:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MULT_OP, 1'b1, 1'b1, 1'b0};
+                            `EXE_MULTU:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MULTU_OP, 1'b1, 1'b1, 1'b0};
+                            `EXE_DIV:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_DIV_OP, 1'b1, 1'b1, 1'b0};
+                            `EXE_DIVU:{reg_write_en_o, alu_op_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_DIVU_OP, 1'b1, 1'b1, 1'b0};
+                            `EXE_JR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, link_addr_o, branch_target_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid} <= {1'b0, `EXE_JR_OP, `EXE_RES_JUMP_BRANCH, 1'b1, 1'b0, `ZEROWORD, operand_1_o, `BRANCH, `IN_DELAY_SLOT, 1'b0};
+                            `EXE_JALR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, link_addr_o, branch_target_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid} <= {1'b1, `EXE_JALR_OP, `EXE_RES_JUMP_BRANCH, 1'b1, 1'b0, pc_plus_8, operand_1_o, `BRANCH, `IN_DELAY_SLOT, 1'b0};
+                            `EXE_TEQ:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_TEQ_OP, `EXE_RES_NOP, 1'b0, 1'b0, 1'b0};
+                            `EXE_TGE:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_TGE_OP, `EXE_RES_NOP, 1'b0, 1'b0, 1'b0};
+                            `EXE_TGEU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_TGEU_OP, `EXE_RES_NOP, 1'b0, 1'b0, 1'b0};
+                            `EXE_TLT:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_TLT_OP, `EXE_RES_NOP, 1'b0, 1'b0, 1'b0};
+                            `EXE_TLTU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_TLTU_OP, `EXE_RES_NOP, 1'b0, 1'b0, 1'b0};
+                            `EXE_TNE:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_TNE_OP, `EXE_RES_NOP, 1'b0, 1'b0, 1'b0};
+                            `EXE_SYSCALL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid, exception_is_syscall} <= {1'b0, `EXE_SYSCALL_OP, `EXE_RES_NOP, 1'b0, 1'b0, 1'b0, `TRUE};
                             default:begin end
                         endcase     //op3 end
                     end
                     default:begin end
 			    endcase     //op2 end
             end								  
-		    `EXE_ORI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_OR_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {16'h0, inst_data[15:0]}, inst_data[20:16], 1'b1};
-	  	    `EXE_ANDI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_AND_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {16'h0, inst_data[15:0]}, inst_data[20:16], 1'b1};
-	  	    `EXE_XORI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_XOR_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {16'h0, inst_data[15:0]}, inst_data[20:16], 1'b1};	
-		    `EXE_LUI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_OR_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {inst_data[15:0], 16'h0}, inst_data[20:16], 1'b1};
-		    `EXE_PREF:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_NOP_OP, `EXE_RES_NOP, 1'b0, 1'b0, {inst_data[15:0], 16'h0}, inst_data[20:16], 1'b1};						  	            
-            `EXE_SLTI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SLT_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b1};  
-            `EXE_SLTIU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SLTU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b1};
-            `EXE_ADDI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_ADDI_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b1};
-            `EXE_ADDIU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_ADDIU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b1};
-            `EXE_J:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, link_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid, branch_target_addr_o} <= {1'b1, `EXE_J_OP, `EXE_RES_JUMP_BRANCH, 1'b0, 1'b0, `ZEROWORD, `BRANCH, `IN_DELAY_SLOT, 1'b1, {pc_plus_4[31:28], inst_data[25:0], 2'b00}};
-            `EXE_JAL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, link_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid, branch_target_addr_o} <= {1'b1, `EXE_JAL_OP, `EXE_RES_JUMP_BRANCH, 1'b0, 1'b0, 5'b11111, pc_plus_8, `BRANCH, `IN_DELAY_SLOT, 1'b1, {pc_plus_4[31:28], inst_data[25:0], 2'b00}};
+		    `EXE_ORI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_OR_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {16'h0, inst_data[15:0]}, inst_data[20:16], 1'b0};
+	  	    `EXE_ANDI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_AND_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {16'h0, inst_data[15:0]}, inst_data[20:16], 1'b0};
+	  	    `EXE_XORI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_XOR_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {16'h0, inst_data[15:0]}, inst_data[20:16], 1'b0};	
+		    `EXE_LUI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_OR_OP, `EXE_RES_LOGIC, 1'b1, 1'b0, {inst_data[15:0], 16'h0}, inst_data[20:16], 1'b0};
+		    `EXE_PREF:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_NOP_OP, `EXE_RES_NOP, 1'b0, 1'b0, {inst_data[15:0], 16'h0}, inst_data[20:16], 1'b0};						  	            
+            `EXE_SLTI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SLT_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b0};  
+            `EXE_SLTIU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SLTU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b0};
+            `EXE_ADDI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_ADDI_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b0};
+            `EXE_ADDIU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_ADDIU_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, inst_data[20:16], 1'b0};
+            `EXE_J:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, link_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid, branch_target_addr_o} <= {1'b1, `EXE_J_OP, `EXE_RES_JUMP_BRANCH, 1'b0, 1'b0, `ZEROWORD, `BRANCH, `IN_DELAY_SLOT, 1'b0, {pc_plus_4[31:28], inst_data[25:0], 2'b00}};
+            `EXE_JAL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, link_addr_o, branch_flag_o, next_inst_in_delayslot_o, inst_valid, branch_target_addr_o} <= {1'b1, `EXE_JAL_OP, `EXE_RES_JUMP_BRANCH, 1'b0, 1'b0, 5'b11111, pc_plus_8, `BRANCH, `IN_DELAY_SLOT, 1'b0, {pc_plus_4[31:28], inst_data[25:0], 2'b00}};
             `EXE_BEQ: begin
                 reg_write_en_o <= `WRITE_DISABLE;
                 alu_op_o <= `EXE_BEQ_OP;
@@ -228,20 +227,20 @@ module ID(
                     next_inst_in_delayslot_o <= `IN_DELAY_SLOT;
                 end
             end
-            `EXE_LB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LB_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
-            `EXE_LBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LBU_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
-            `EXE_LH:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LH_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
-            `EXE_LHU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LHU_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
-            `EXE_LW:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LW_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
-            `EXE_LWL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LWL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b1};
-            `EXE_LWR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LWR_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b1};
-            `EXE_SB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SB_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
-            `EXE_SH:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SH_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
-            `EXE_SW:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SW_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
-            `EXE_SWL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SWL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
-            `EXE_SWR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SWR_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b1};
-            `EXE_LL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b1};
-            `EXE_SC:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SC_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b1};
+            `EXE_LB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LB_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b0};
+            `EXE_LBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LBU_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b0};
+            `EXE_LH:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LH_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b0};
+            `EXE_LHU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LHU_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b0};
+            `EXE_LW:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LW_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b0};
+            `EXE_LWL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LWL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b0};
+            `EXE_LWR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LWR_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b0};
+            `EXE_SB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SB_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b0};
+            `EXE_SH:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SH_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b0};
+            `EXE_SW:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SW_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b0};
+            `EXE_SWL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SWL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b0};
+            `EXE_SWR:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_SWR_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, 1'b0};
+            `EXE_LL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_LL_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b0, inst_data[20:16], 1'b0};
+            `EXE_SC:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SC_OP, `EXE_RES_LOAD_STORE, 1'b1, 1'b1, inst_data[20:16], 1'b0};
             `EXE_REGIMM_INST: begin
                 case(op4)
                     `EXE_BGEZ: begin
@@ -304,30 +303,64 @@ module ID(
                             next_inst_in_delayslot_o <= `IN_DELAY_SLOT;
                         end
                     end
+                    `EXE_TEQI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, inst_valid} <= {1'b0, `EXE_TEQI_OP, `EXE_RES_NOP, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, 1'b0};
+                    `EXE_TGEI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, inst_valid} <= {1'b0, `EXE_TGEI_OP, `EXE_RES_NOP, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, 1'b0};
+                    `EXE_TGEIU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, inst_valid} <= {1'b0, `EXE_TGEIU_OP, `EXE_RES_NOP, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, 1'b0};
+                    `EXE_TLTI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, inst_valid} <= {1'b0, `EXE_TLTI_OP, `EXE_RES_NOP, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, 1'b0};
+                    `EXE_TLTIU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, inst_valid} <= {1'b0, `EXE_TLTIU_OP, `EXE_RES_NOP, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, 1'b0};
+                    `EXE_TNEI:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm, inst_valid} <= {1'b0, `EXE_TNEI_OP, `EXE_RES_NOP, 1'b1, 1'b0, {{16{inst_data[15]}}, inst_data[15:0]}, 1'b0};
                     default: begin end
                 endcase     //op4 end
             end
             `EXE_SPECIAL_INST_2: begin
                 case(op3)
-                    `EXE_CLZ:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_CLZ_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, 1'b1};
-                    `EXE_CLO:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_CLO_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, 1'b1};
-                    `EXE_MUL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MUL_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b1};
-                    `EXE_MADD:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MADD_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
-                    `EXE_MADDU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MADDU_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
-                    `EXE_MSUB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MSUB_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
-                    `EXE_MSUBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MSUBU_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b1};
+                    `EXE_CLZ:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_CLZ_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, 1'b0};
+                    `EXE_CLO:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_CLO_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b0, 1'b0};
+                    `EXE_MUL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b1, `EXE_MUL_OP, `EXE_RES_ARITHMETIC, 1'b1, 1'b1, 1'b0};
+                    `EXE_MADD:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MADD_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b0};
+                    `EXE_MADDU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MADDU_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b0};
+                    `EXE_MSUB:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MSUB_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b0};
+                    `EXE_MSUBU:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, inst_valid} <= {1'b0, `EXE_MSUBU_OP, `EXE_RES_MUL, 1'b1, 1'b1, 1'b0};
                     default:begin end
                 endcase     //op3 end again
             end
             default:begin end
         endcase     //op1 end
 
+        if(inst_data == `EXE_ERET)
+        begin
+            reg_write_en_o <= `WRITE_ENABLE;
+            alu_op_o <= `EXE_ERET_OP;
+            alu_sel_o <= `EXE_RES_NOP;
+            reg_read_en_1_o <= 1'b0;
+            reg_read_en_2_o <= 1'b0;
+            inst_valid <= `INST_VALID;
+            exception_is_eret <= `TRUE;
+        end else if(inst_data[31:21] == 11'b01000000000 && inst_data[10:0] == 11'b00000000000)
+        begin
+            alu_op_o <= `EXE_MFC0_OP;
+            alu_sel_o <= `EXE_RES_MOVE;
+            reg_write_addr_o <= inst_data[20:16];
+            reg_write_en_o <= `WRITE_ENABLE;
+            inst_valid <= `INST_VALID;   
+            reg_read_en_1_o <= 1'b0;
+            reg_read_en_2_o <= 1'b0;
+        end else if(inst_data[31:21] == 11'b01000000100 && inst_data[10:0] == 11'b00000000000) begin
+            alu_op_o <= `EXE_MTC0_OP;
+            alu_sel_o <= `EXE_RES_MOVE;
+            reg_write_en_o <= `WRITE_DISABLE;
+            inst_valid <= `INST_VALID;   
+            reg_read_en_1_o <= 1'b1;
+            reg_read_en_2_o <= 1'b0;
+            reg_read_addr_1_o <= inst_data[20:16];
+        end
+
 	    if(inst_data[31:21] == 11'b00000000000) 
         begin
 		    case (op3)
-	            `EXE_SLL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm[4:0], reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SLL_OP, `EXE_RES_SHIFT, 1'b0, 1'b1, inst_data[10:6], inst_data[15:11], 1'b1};
-	            `EXE_SRL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm[4:0], reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SRL_OP, `EXE_RES_SHIFT, 1'b0, 1'b1, inst_data[10:6], inst_data[15:11], 1'b1};		   
-	            `EXE_SRA:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm[4:0], reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SRA_OP, `EXE_RES_SHIFT, 1'b0, 1'b1, inst_data[10:6], inst_data[15:11], 1'b1};
+	            `EXE_SLL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm[4:0], reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SLL_OP, `EXE_RES_SHIFT, 1'b0, 1'b1, inst_data[10:6], inst_data[15:11], 1'b0};
+	            `EXE_SRL:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm[4:0], reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SRL_OP, `EXE_RES_SHIFT, 1'b0, 1'b1, inst_data[10:6], inst_data[15:11], 1'b0};		   
+	            `EXE_SRA:{reg_write_en_o, alu_op_o, alu_sel_o, reg_read_en_1_o, reg_read_en_2_o, imm[4:0], reg_write_addr_o, inst_valid} <= {1'b1, `EXE_SRA_OP, `EXE_RES_SHIFT, 1'b0, 1'b1, inst_data[10:6], inst_data[15:11], 1'b0};
                 default:begin end
             endcase
 	    end         	

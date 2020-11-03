@@ -24,6 +24,8 @@ module MEM_WB(
 	input wire mem_LLbit_write_en,
 	input wire mem_LLbit_data,
 
+	input wire flush,
+
     output reg[`REG_DATA_BUS] wb_reg_write_data,    
     output reg[`REG_ADDR_BUS] wb_reg_write_addr,
     output reg wb_reg_write_en,
@@ -45,6 +47,18 @@ module MEM_WB(
     begin
 		if(rst == `RST_ENABLE) 
         begin
+			wb_reg_write_addr <= `NOP_REG_ADDR;
+			wb_reg_write_en <= `WRITE_DISABLE;
+		    wb_reg_write_data <= `ZEROWORD;	
+		    wb_hi_write_data <= `ZEROWORD;
+		    wb_lo_write_data <= `ZEROWORD;
+		    wb_hilo_write_en <= `WRITE_DISABLE;	
+			wb_LLbit_write_en <= 1'b0;
+			wb_LLbit_data <= 1'b0;
+			wb_cp0_reg_write_en <= `WRITE_DISABLE;
+			wb_cp0_reg_write_addr <= 5'b00000;
+			wb_cp0_reg_write_data <= `ZEROWORD;
+		end else if(flush == 1'b1) begin
 			wb_reg_write_addr <= `NOP_REG_ADDR;
 			wb_reg_write_en <= `WRITE_DISABLE;
 		    wb_reg_write_data <= `ZEROWORD;	
