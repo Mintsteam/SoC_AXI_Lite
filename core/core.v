@@ -319,7 +319,7 @@ module core(
         .id_reg_write_addr(id_reg_write_addr_o),
         .id_reg_write_en(id_reg_write_en_o),
         .id_link_addr(link_addr_o),
-        .id_is_in_delayslot(is_in_delayslot_o),
+        .id_is_in_delayslot(is_in_delayslot_o_from_ID),
         .next_inst_in_delayslot_i(next_inst_in_delayslot_o),
         .id_inst_data(inst_data_o),
         .id_exception_type(exception_type_o),
@@ -338,10 +338,12 @@ module core(
         .ex_reg_write_en(ex_reg_write_en_i),
         .ex_link_addr(ex_link_addr),
         .ex_is_in_delayslot(ex_is_in_delayslot),
-        .is_in_delayslot_o(is_in_delayslot_o),
         .ex_inst_data(ex_inst_data),
         .ex_exception_type(ex_exception_type),
-        .ex_current_inst_addr(ex_current_inst_addr)
+        .ex_current_inst_addr(ex_current_inst_addr),
+
+        //OUTPUT TO ID
+        .is_in_delayslot_o(is_in_delayslot_o_from_ID_EX)
 
     );
 
