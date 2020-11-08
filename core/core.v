@@ -59,7 +59,10 @@ module core(
     wire[`REG_DATA_BUS] ex_current_inst_addr;
 
     //connect ID_EX to ID
-    wire is_in_delayslot_o;
+    wire is_in_delayslot_o_from_ID_EX;
+
+    //connect ID to ID_EX
+    wire is_in_delayslot_o_from_ID;
 
     //connect EX to EX_MEM
     wire ex_reg_write_en_o;
@@ -229,27 +232,17 @@ module core(
 
     ID ID0(
 
-        //INPUT FROM PC
-        .branch_target_addr_o(branch_target_addr_o),
-        .branch_flag_o(branch_flag_o),
-
         //INPUT FROM IF_ID
         .rst(rst),
         .inst_addr(id_pc_o),        
         .inst_data(id_inst_o),
-
-        //OUTPUT TO REGFILE 
-        .reg_read_addr_1_o(reg_read_addr_1),
-        .reg_read_en_1_o(reg_read_en_1),
-        .reg_read_addr_2_o(reg_read_addr_2),
-        .reg_read_en_2_o(reg_read_en_2),
 
         //INPUT FROM REGFILE
         .reg_data_1_i(reg_read_data_1),
         .reg_data_2_i(reg_read_data_2),
 
         //INPUT FROM ID_EX
-        .is_in_delayslot_i(is_in_delayslot_o),
+        .is_in_delayslot_i(is_in_delayslot_o_from_ID_EX),
 
         //INPUT FROM EX (forwarding)
         .ex_reg_write_en_i(ex_reg_write_en_o),
@@ -262,6 +255,16 @@ module core(
         .mem_reg_write_data_i(mem_reg_write_data_o),
         .mem_reg_write_addr_i(mem_reg_write_addr_o),
 
+        //OUTPUT TO PC
+        .branch_target_addr_o(branch_target_addr_o),
+        .branch_flag_o(branch_flag_o),
+
+        //OUTPUT TO REGFILE 
+        .reg_read_addr_1_o(reg_read_addr_1),
+        .reg_read_en_1_o(reg_read_en_1),
+        .reg_read_addr_2_o(reg_read_addr_2),
+        .reg_read_en_2_o(reg_read_en_2),
+
         //OUTPUT TO ID_EX 
         .alu_op_o(id_alu_op_o),
         .alu_sel_o(id_alu_sel_o),
@@ -269,7 +272,7 @@ module core(
         .operand_2_o(id_operand_2_o),
         .reg_write_addr_o(id_reg_write_addr_o),
         .reg_write_en_o(id_reg_write_en_o),
-        .is_in_delayslot_o(is_in_delayslot_o),
+        .is_in_delayslot_o(is_in_delayslot_o_from_ID),
         .link_addr_o(link_addr_o),
         .next_inst_in_delayslot_o(next_inst_in_delayslot_o),
         .inst_data_o(inst_data_o),

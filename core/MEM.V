@@ -78,7 +78,6 @@ module MEM(
 	reg[`REG_DATA_BUS] cp0_cause;
 	reg[`REG_DATA_BUS] cp0_epc;
 
-	assign mem_write_en_o = mem_we;
 	assign zero32 = `ZEROWORD;
 	
 	assign is_in_delayslot_o = is_in_delayslot_i;
@@ -111,12 +110,12 @@ module MEM(
 
 	assign cp0_epc_o = cp0_epc;
 
-	always @ (*)
+	always @ (*)    //暂存cp0_cause
 	begin
 		if(rst == `RST_ENABLE)
 		begin
 			cp0_cause <= `ZEROWORD;
-		end	else if((wb_cp0_reg_write_en == `WRITE_ENABLE) && (wb_cp0_reg_write_addr == `CP0_REG_CAUSE)) begin
+		end	else if((wb_cp0_reg_write_en == `WRITE_ENABLE) && (wb_cp0_reg_write_addr == `CP0_REG_CAUSE)) begin    //从写回阶段前推，解决数据相关
 			cp0_cause[9:8] <= wb_cp0_reg_write_data[9:8];
 			cp0_cause[22] <= wb_cp0_reg_write_data[22];
 			cp0_cause[23] <= wb_cp0_reg_write_data[23];
@@ -125,7 +124,7 @@ module MEM(
 		end
 	end
 
-	always @ (*) begin
+	always @ (*) begin    //最终确定异常原因
 		if(rst == `RST_ENABLE) 
 		begin
 			exception_type_o <= `ZEROWORD;
@@ -133,19 +132,18 @@ module MEM(
 			exception_type_o <= `ZEROWORD;
 			if(current_inst_addr_i != `ZEROWORD) 
 			begin
-				if(((cp0_cause[15:8] & (cp0_status[15:8])) != 8'h00) && (cp0_status[1] == 1'b0) && 
-							(cp0_status[0] == 1'b1)) begin
-					exception_type_o <= 32'h00000001;        //interrupt
+				if(((cp0_cause[15:8] & (cp0_status[15:8])) != 8'h00) && (cp0_status[1] == 1'b0) && (cp0_status[0] == 1'b1)) begin //若status和cause关于外部中断的IM[7:0]和IP[7:0]有相同位置均不为0的项,且IE=1,EXL=0
+					exception_type_o <= 32'h00000001;       //interrupt
 				end else if(exception_type_i[8] == 1'b1) begin
-			  		exception_type_o <= 32'h00000008;        //syscall
+			  		exception_type_o <= 32'h00000008;       //syscall
 				end else if(exception_type_i[9] == 1'b1) begin
-					exception_type_o <= 32'h0000000a;        //inst_invalid
+					exception_type_o <= 32'h0000000a;       //inst_invalid
 				end else if(exception_type_i[10] ==1'b1) begin
-					exception_type_o <= 32'h0000000d;        //trap
-				end else if(exception_type_i[11] == 1'b1) begin  //ov
-					exception_type_o <= 32'h0000000c;
-				end else if(exception_type_i[12] == 1'b1) begin  //返回指令
-					exception_type_o <= 32'h0000000e;
+					exception_type_o <= 32'h0000000d;		//trap
+				end else if(exception_type_i[11] == 1'b1) begin  
+					exception_type_o <= 32'h0000000c;		//ov
+				end else if(exception_type_i[12] == 1'b1) begin  
+					exception_type_o <= 32'h0000000e;		//返回指令
 				end
 			end	
 		end

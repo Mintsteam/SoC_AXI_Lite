@@ -215,7 +215,7 @@ module EX(
                         trap_assert <= `TRAP_ASSERT;
                     end
                 end
-                `EXE_TLT_OP, `EXE_TLTI_OP, `EXE_TLTIU_OP, `EXE_TLTIU_OP: begin
+                `EXE_TLT_OP, `EXE_TLTI_OP, `EXE_TLTU_OP, `EXE_TLTIU_OP: begin
                     if(smaller)
                     begin
                         trap_assert <= `TRAP_ASSERT;
@@ -400,7 +400,7 @@ module EX(
             `EXE_MFLO_OP:move_out <= rst ? 0 : lo_out;
             `EXE_MOVZ_OP:move_out <= rst ? 0 : operand_1_i;
             `EXE_MOVN_OP:move_out <= rst ? 0 : operand_1_i;
-            `EXE_MFC0_OP:begin
+            `EXE_MFC0_OP:begin                                  //读取CP0内寄存器的信息
                 cp0_reg_read_addr_o <= inst_data_i[15:11];
                 move_out <= cp0_reg_read_data_i;
                 if(mem_cp0_reg_write_en == `WRITE_ENABLE && mem_cp0_reg_write_addr == inst_data_i[15:11])
@@ -479,6 +479,7 @@ module EX(
         end
     end
 
+    //写入CP0
     always @ (*)
     begin
         if(rst == `RST_ENABLE)

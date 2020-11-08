@@ -70,10 +70,11 @@ module ID_EX(
 			ex_reg_data_2 <= `ZEROWORD;
 			ex_reg_write_addr <= `NOP_REG_ADDR;
 			ex_reg_write_en <= `WRITE_DISABLE;
-			ex_exception_type <= `ZEROWORD;
-			ex_current_inst_addr <= `ZEROWORD;
+			ex_link_addr <= `ZEROWORD;
+			ex_inst_data <= `ZEROWORD;
 			ex_is_in_delayslot <= `NOT_IN_DELAY_SLOT;
 			is_in_delayslot_o <= `NOT_IN_DELAY_SLOT;	
+			ex_exception_type <= `ZEROWORD;
 			ex_current_inst_addr <= `ZEROWORD;
 		end else if(stall[2] == `STOP && stall[3] == `NOT_STOP) begin
 			ex_alu_op <= `EXE_NOP_OP;
@@ -81,9 +82,12 @@ module ID_EX(
 			ex_reg_data_1 <= `ZEROWORD;
 			ex_reg_data_2 <= `ZEROWORD;
 			ex_reg_write_addr <= `NOP_REG_ADDR;
-			ex_reg_write_en <= `WRITE_DISABLE;		
+			ex_reg_write_en <= `WRITE_DISABLE;
+			ex_link_addr <= `ZEROWORD;
+			ex_inst_data <= `ZEROWORD;		
 			ex_is_in_delayslot <= `NOT_IN_DELAY_SLOT;
-			is_in_delayslot_o <= `NOT_IN_DELAY_SLOT;	
+			is_in_delayslot_o <= `NOT_IN_DELAY_SLOT;
+			ex_exception_type <= `ZEROWORD;
 			ex_current_inst_addr <= `ZEROWORD;	
 		end else if(stall[2] == `NOT_STOP) begin		
 			ex_alu_op <= id_alu_op;
@@ -93,9 +97,9 @@ module ID_EX(
 			ex_reg_write_addr <= id_reg_write_addr;
 			ex_reg_write_en <= id_reg_write_en;	
 			ex_link_addr <= id_link_addr;
+			ex_inst_data <= id_inst_data;
 			ex_is_in_delayslot <= id_is_in_delayslot;
 			is_in_delayslot_o <= next_inst_in_delayslot_i;	
-			ex_inst_data <= id_inst_data;
 			ex_exception_type <= id_exception_type;
 			ex_current_inst_addr <= id_current_inst_addr;
 		end

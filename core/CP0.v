@@ -45,57 +45,57 @@ module CP0(
 			prid_o <= 32'b00000000010011000000000100000010;
             timer_interrupt_o <= `INTERRUPT_NOT_ASSERT;
         end else begin
-            count_o <= count_o + 1;
-            cause_o[15:10] <= interrupt_i;
-            if(compare_o != `ZEROWORD && count_o == compare_o)
+            count_o <= count_o + 1;    //每过一个时钟周期，count寄存器自加1
+            cause_o[15:10] <= interrupt_i;    //为cause寄存器的中断字段IP[7:2]写入外部中断信号
+            if(compare_o != `ZEROWORD && count_o == compare_o)    //若到达时钟中断发生时间
             begin
-                timer_interrupt_o <= `INTERRUPT_ASSERT;
+                timer_interrupt_o <= `INTERRUPT_ASSERT;    //时钟中断发生，直到有数据写入compare寄存器才结束
             end
             if(write_en_i == `WRITE_ENABLE)
             begin
                 case(write_addr_i)
                     `CP0_REG_COUNT:count_o <= write_data_i;
-                    `CP0_REG_COMPARE:{compare_o, timer_interrupt_o} <= {write_data_i, `INTERRUPT_NOT_ASSERT};
+                    `CP0_REG_COMPARE:{compare_o, timer_interrupt_o} <= {write_data_i, `INTERRUPT_NOT_ASSERT};    //当有数据写入compare寄存器时，结束时钟中断
                     `CP0_REG_STATUS:status_o <= write_data_i;
                     `CP0_REG_EPC:epc_o <= write_data_i;
-                    `CP0_REG_CAUSE:{cause_o[9:8], cause_o[23], cause_o[22]} <= {write_data_i[9:8], write_data_i[23], write_data_i[22]};
+                    `CP0_REG_CAUSE:{cause_o[9:8], cause_o[23], cause_o[22]} <= {write_data_i[9:8], write_data_i[23], write_data_i[22]};    //分别写入cause寄存器的IP[1:0],IV，WP字段，且仅有这些字段可写
                     default:begin end
                 endcase
             end 
             case (exception_type_i)
-				32'h00000001: begin
-					if(is_in_delayslot_i == `IN_DELAY_SLOT ) 
+				32'h00000001: begin    //外部中断
+					if(is_in_delayslot_i == `IN_DELAY_SLOT) 
                     begin
-						epc_o <= current_inst_addr_i - 4 ;
-						cause_o[31] <= 1'b1;
+						epc_o <= current_inst_addr_i - 4;    //若该异常指令在延迟槽，则程序返回地址应为上一条指令处
+						cause_o[31] <= 1'b1;    //若该异常指令在延迟槽，将BD字段置1
 					end else begin
-					  epc_o <= current_inst_addr_i;
-					  cause_o[31] <= 1'b0;
+					    epc_o <= current_inst_addr_i;
+					    cause_o[31] <= 1'b0;
 					end
-					status_o[1] <= 1'b1;
-					cause_o[6:2] <= 5'b00000;
+					status_o[1] <= 1'b1;    //设置EXL字段为1,禁止中断
+					cause_o[6:2] <= 5'b00000;    //设置ExcCode字段，表示异常原因为外部中断
 				end
-				32'h00000008: begin
-					if(status_o[1] == 1'b0) 
+				32'h00000008: begin    //系统调用异常syscall
+					if(status_o[1] == 1'b0)    //若不处于异常级
                     begin
-						if(is_in_delayslot_i == `IN_DELAY_SLOT ) 
+						if(is_in_delayslot_i == `IN_DELAY_SLOT) 
                         begin
-							epc_o <= current_inst_addr_i - 4 ;
+							epc_o <= current_inst_addr_i - 4;
 							cause_o[31] <= 1'b1;
 						end else begin
-					  	epc_o <= current_inst_addr_i;
-					  	cause_o[31] <= 1'b0;
+					  	    epc_o <= current_inst_addr_i;
+					  	    cause_o[31] <= 1'b0;
 						end
 					end
 					status_o[1] <= 1'b1;
 					cause_o[6:2] <= 5'b01000;			
 				end
-				32'h0000000a: begin
+				32'h0000000a: begin    //无效指令异常
 					if(status_o[1] == 1'b0) 
                     begin
-						if(is_in_delayslot_i == `IN_DELAY_SLOT ) 
+						if(is_in_delayslot_i == `IN_DELAY_SLOT) 
                         begin
-							epc_o <= current_inst_addr_i - 4 ;
+							epc_o <= current_inst_addr_i - 4;
 							cause_o[31] <= 1'b1;
 						end else begin
 					  	epc_o <= current_inst_addr_i;
@@ -105,45 +105,45 @@ module CP0(
 					status_o[1] <= 1'b1;
 					cause_o[6:2] <= 5'b01010;					
 				end
-				32'h0000000d: begin
+				32'h0000000d: begin    //自陷异常
 					if(status_o[1] == 1'b0) 
                     begin
-						if(is_in_delayslot_i == `IN_DELAY_SLOT ) 
+						if(is_in_delayslot_i == `IN_DELAY_SLOT) 
                         begin
-							epc_o <= current_inst_addr_i - 4 ;
+							epc_o <= current_inst_addr_i - 4;
 							cause_o[31] <= 1'b1;
 						end else begin
-					  	epc_o <= current_inst_addr_i;
-					  	cause_o[31] <= 1'b0;
+					  	    epc_o <= current_inst_addr_i;
+					  	    cause_o[31] <= 1'b0;
 						end
 					end
-					status_o[1] <= 1'b1;
+					status_o[1] <= 1'b1;    //设置EXL字段为1
 					cause_o[6:2] <= 5'b01101;					
 				end
-				32'h0000000c: begin
+				32'h0000000c: begin    //溢出异常
 					if(status_o[1] == 1'b0) 
                     begin
-						if(is_in_delayslot_i == `IN_DELAY_SLOT ) 
+						if(is_in_delayslot_i == `IN_DELAY_SLOT) 
                         begin
-							epc_o <= current_inst_addr_i - 4 ;
+							epc_o <= current_inst_addr_i - 4;
 							cause_o[31] <= 1'b1;
 						end else begin
-					  	epc_o <= current_inst_addr_i;
-					  	cause_o[31] <= 1'b0;
+					  	    epc_o <= current_inst_addr_i;
+					  	    cause_o[31] <= 1'b0;
 						end
 					end
 					status_o[1] <= 1'b1;
 					cause_o[6:2] <= 5'b01100;					
 				end				
-				32'h0000000e: begin
-					status_o[1] <= 1'b0;
+				32'h0000000e: begin    //异常返回指令eret
+					status_o[1] <= 1'b0;    //清除EXL字段数据,允许中断
 				end
 				default:begin end
 			endcase	
         end   
     end
 
-    always @ (*)
+    always @ (*)    //读取CP0各个寄存器的值
     begin
         if(rst == `RST_ENABLE)
         begin

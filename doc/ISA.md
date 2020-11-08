@@ -415,3 +415,37 @@ To compare GPRs and do a conditional trap<br>
 #### Description:
 *if GPR[rs] != GPR[rt] then Trap*<br><br>
 Compare the contents of GPR[rs] and GPR[rt] as signed integers, if GPR[rs] is not equal to GPR[rt], then take a Trap exception<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __MFC0__ `Move from Coprocessor 0` p163
+|    31-26     |   25-21   | 20-16 | 15-11 |    10-3     |  2-0  |
+| :----------: | :-------: | :---: | :---: | :---------: | :---: |
+| COP0(010000) | MF(00000) |  rt   |  rd   | 0(00000000) |  sel  |
+|      6       |     5     |   5   |   5   |      8      |   3   |
+#### Format:
+>MFCO rt, rd<br>
+>MFCO rt, rd, sel<br>
+#### Purpose:
+To move the contents of a coprocessor 0 register to a general register<br>
+#### Description:
+*GPR[rt] ¡û CPR[0, rd, sel]*<br><br>
+The contents of the coprocessor 0 register specified by the combination of rd and sel are loaded into general register rt.<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __MFC0__ `Move from Coprocessor 0` p182
+|    31-26     |   25-21   | 20-16 | 15-11 |    10-3     |  2-0  |
+| :----------: | :-------: | :---: | :---: | :---------: | :---: |
+| COP0(010000) | MF(00100) |  rt   |  rd   | 0(00000000) |  sel  |
+|      6       |     5     |   5   |   5   |      8      |   3   |
+#### Format:
+>MTCO rt, rd<br>
+>MTCO rt, rd, sel<br>
+#### Purpose:
+To move the contents of a general register to a coprocessor 0 register<br>
+#### Description:
+*CPR[0, rd, sel] ¡û GPR[rt]*<br><br>
+The contents of general register rt are loaded into the coprocessor 0 register specified by the combination of rd and sel.<br>

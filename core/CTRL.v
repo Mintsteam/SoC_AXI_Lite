@@ -25,37 +25,25 @@ module CTRL(
             stall <= 6'b000000;
             flush <= 1'b0;
             new_pc <= `ZEROWORD;
-        end else if(exception_type_i != `ZEROWORD) begin
-            stall <= 6'b000000;
-            flush <= 1'b1;
+        end else if(exception_type_i != `ZEROWORD) begin    //若异常类型不为0
+            stall <= 6'b000000;     //所有阶段正常运行
+            flush <= 1'b1;          //清空流水线
             case(exception_type_i)
-                32'h00000001: begin
-                    new_pc <= 32'h00000020;
-                end
-                32'h00000008: begin
-                    new_pc <= 32'h00000040;
-                end
-                32'h0000000a: begin
-                    new_pc <= 32'h00000040;
-                end
-                32'h0000000d: begin
-                    new_pc <= 32'h00000040;
-                end
-                32'h0000000c: begin
-                    new_pc <= 32'h00000040;
-                end
-                32'h0000000e: begin
-                    new_pc <= cp0_epc_i;
-                end
+                32'h00000001:new_pc <= 32'h00000020;    //中断的异常处理入口地址
+                32'h00000008:new_pc <= 32'h00000040;    //系统调用syscall的异常处理入口地址
+                32'h0000000a:new_pc <= 32'h00000040;    //指令无效的异常处理入口地址
+                32'h0000000d:new_pc <= 32'h00000040;    //自陷的异常处理入口地址
+                32'h0000000c:new_pc <= 32'h00000040;    //溢出的异常处理入口地址
+                32'h0000000e:new_pc <= cp0_epc_i;       //异常返回指令返回正常程序运行
                 default: begin end
             endcase
-        end else if(ex_stall_req == `STOP) begin
+        end else if(ex_stall_req == `STOP) begin    //若执行阶段提出阻塞流水线请求，则将EX及此前的阶段均阻塞
             stall <= 6'b001111;
             flush <= 1'b0;
-        end else if(id_stall_req == `STOP) begin
+        end else if(id_stall_req == `STOP) begin    //若译码阶段提出阻塞流水线请求，则将ID及此前的阶段均阻塞
             stall <= 6'b000111;
             flush <= 1'b0;
-        end else begin
+        end else begin                              //正常运行
             stall <= 6'b000000;
             flush <= 1'b0;
             new_pc <= `ZEROWORD;
