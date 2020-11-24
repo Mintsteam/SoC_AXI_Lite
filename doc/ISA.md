@@ -449,3 +449,12 @@ To move the contents of a general register to a coprocessor 0 register<br>
 #### Description:
 *CPR[0, rd, sel] ¡û GPR[rt]*<br><br>
 The contents of general register rt are loaded into the coprocessor 0 register specified by the combination of rd and sel.<br>
+
+<div STYLE="page-break-after: always;"></div>
+
+---
+### __exception_type_o__
+| 31-15 |  14   |  13   |  12   |    11    |  10   |     9     |    8    |        7-0         |
+| :---: | :---: | :---: | :---: | :------: | :---: | :-------: | :-----: | :----------------: |
+|       | AdES  | AdEL  | eret  | overflow | trap  | instvalid | syscall | external interrupt |
+|  17   |   1   |   1   |   1   |    1     |   1   |     1     |    1    |         8          |

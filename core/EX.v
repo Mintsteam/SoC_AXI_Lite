@@ -369,14 +369,16 @@ module EX(
         stall_req = madd_msub_stall_req || div_stall_req;
     end
 
+    reg[1:0] flag;
+
     //execute logic instructions
     always @ (*) 
     begin
         case (alu_op_i)
-            `EXE_OR_OP:logic_out <= rst ? 0 : operand_1_i | operand_2_i;
-            `EXE_AND_OP:logic_out <= rst ? 0 : operand_1_i & operand_2_i;
-            `EXE_NOR_OP:logic_out <= rst ? 0 : ~(operand_1_i | operand_2_i);
-            `EXE_XOR_OP:logic_out <= rst ? 0 : operand_1_i ^ operand_2_i;
+            `EXE_OR_OP:logic_out <= !rst ? 0 : operand_1_i | operand_2_i;
+            `EXE_AND_OP:logic_out <= !rst ? 0 : operand_1_i & operand_2_i;
+            `EXE_NOR_OP:logic_out <= !rst ? 0 : ~(operand_1_i | operand_2_i);
+            `EXE_XOR_OP:logic_out <= !rst ? 0 : operand_1_i ^ operand_2_i;
             default:logic_out <= `ZEROWORD;
         endcase
 	end   
@@ -385,9 +387,9 @@ module EX(
     always @ (*)
     begin
         case (alu_op_i)
-            `EXE_SLL_OP:shift_out <= rst ? 0 : operand_2_i << operand_1_i[4:0];
-            `EXE_SRL_OP:shift_out <= rst ? 0 : operand_2_i >> operand_1_i[4:0];
-            `EXE_SRA_OP:shift_out <= rst ? 0 : ( { 32 { operand_2_i[31] } } << ( 6'd32 - { 1'b0, operand_1_i[4:0] } ) ) | operand_2_i>> operand_1_i[4:0];
+            `EXE_SLL_OP:shift_out <= !rst ? 0 : operand_2_i << operand_1_i[4:0];
+            `EXE_SRL_OP:shift_out <= !rst ? 0 : operand_2_i >> operand_1_i[4:0];
+            `EXE_SRA_OP:shift_out <= !rst ? 0 : ( { 32 { operand_2_i[31] } } << ( 6'd32 - { 1'b0, operand_1_i[4:0] } ) ) | operand_2_i>> operand_1_i[4:0];
             default:shift_out <= `ZEROWORD;
         endcase
     end
@@ -396,10 +398,10 @@ module EX(
     always @ (*)
     begin
         case(alu_op_i)
-            `EXE_MFHI_OP:move_out <= rst ? 0 : hi_out;
-            `EXE_MFLO_OP:move_out <= rst ? 0 : lo_out;
-            `EXE_MOVZ_OP:move_out <= rst ? 0 : operand_1_i;
-            `EXE_MOVN_OP:move_out <= rst ? 0 : operand_1_i;
+            `EXE_MFHI_OP:move_out <= !rst ? 0 : hi_out;
+            `EXE_MFLO_OP:move_out <= !rst ? 0 : lo_out;
+            `EXE_MOVZ_OP:move_out <= !rst ? 0 : operand_1_i;
+            `EXE_MOVN_OP:move_out <= !rst ? 0 : operand_1_i;
             `EXE_MFC0_OP:begin                                  //读取CP0内寄存器的信息
                 cp0_reg_read_addr_o <= inst_data_i[15:11];
                 move_out <= cp0_reg_read_data_i;

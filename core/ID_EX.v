@@ -46,7 +46,7 @@ module ID_EX(
 	output reg[31:0] ex_exception_type
 
 );
-
+	
     always @ (posedge clk) 
     begin
 		if (rst == `RST_ENABLE) 

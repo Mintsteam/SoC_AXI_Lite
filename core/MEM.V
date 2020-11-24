@@ -124,7 +124,8 @@ module MEM(
 		end
 	end
 
-	always @ (*) begin    //最终确定异常原因
+	always @(*)  //最终确定异常原因
+	begin   
 		if(rst == `RST_ENABLE) 
 		begin
 			exception_type_o <= `ZEROWORD;
@@ -134,6 +135,10 @@ module MEM(
 			begin
 				if(((cp0_cause[15:8] & (cp0_status[15:8])) != 8'h00) && (cp0_status[1] == 1'b0) && (cp0_status[0] == 1'b1)) begin //若status和cause关于外部中断的IM[7:0]和IP[7:0]有相同位置均不为0的项,且IE=1,EXL=0
 					exception_type_o <= 32'h00000001;       //interrupt
+				end else if(exception_type_i[8] == 1'b1) begin
+			  		exception_type_o <= 32'h00000004;		//AdEL
+				end else if(exception_type_i[8] == 1'b1) begin
+			  		exception_type_o <= 32'h00000005;		//AdES
 				end else if(exception_type_i[8] == 1'b1) begin
 			  		exception_type_o <= 32'h00000008;       //syscall
 				end else if(exception_type_i[9] == 1'b1) begin

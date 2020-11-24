@@ -1,5 +1,5 @@
-`define RST_ENABLE 1'b1
-`define RST_DISABLE 1'b0
+`define RST_ENABLE 1'b0
+`define RST_DISABLE 1'b1
 `define ZEROWORD 32'h00000000
 `define WRITE_ENABLE 1'b1
 `define WRITE_DISABLE 1'b0
@@ -35,6 +35,17 @@
 `define NOT_BRANCH 1'b0
 `define IN_DELAY_SLOT 1'b1
 `define NOT_IN_DELAY_SLOT 1'b0
+
+`define INST_ADDR_BUS 31:0
+`define INST_DATA_BUS 31:0
+`define INST_MEM_SIZE 131071
+`define INST_MEM_SIZE_WIDTH 17
+
+`define DATA_ADDR_BUS 31:0
+`define DATA_BUS 31:0
+`define DATA_MEM_NUM 131071
+`define DATA_ADDR_BUS_WIDTH 17
+`define BYTE_WIDTH 7:0
 
 //stage > component > operation > num
 //data > addr > en

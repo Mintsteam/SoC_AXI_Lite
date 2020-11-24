@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 `include "../define/global.vh"
 `include "../define/regfile.vh"
-`include "../define/rom.vh"
 `include "../define/opcode.vh"
 
 module ID(
@@ -105,13 +104,13 @@ module ID(
         next_inst_in_delayslot_o <= `NOT_IN_DELAY_SLOT;
         alu_op_o <= `EXE_NOP_OP;
         alu_sel_o <= `EXE_RES_NOP;
-        reg_write_addr_o <= rst ? 0 : inst_data[15:11];
+        reg_write_addr_o <= !rst ? 0 : inst_data[15:11];
         reg_write_en_o <= `WRITE_DISABLE;
-        inst_valid <= rst ? `INST_VALID : `INST_INVALID;   
+        inst_valid <= !rst ? `INST_VALID : `INST_INVALID;   
         reg_read_en_1_o <= 0;
         reg_read_en_2_o <= 0;
-        reg_read_addr_1_o <= rst ? 0 : inst_data[25:21];
-        reg_read_addr_2_o <= rst ? 0 : inst_data[20:16];		
+        reg_read_addr_1_o <= !rst ? 0 : inst_data[25:21];
+        reg_read_addr_2_o <= !rst ? 0 : inst_data[20:16];		
         imm <= `ZEROWORD;
         exception_is_syscall <= `FALSE;
         exception_is_eret <= `FALSE;

@@ -26,7 +26,7 @@ module REGFILE(
     //write
     always @ (posedge clk)
     begin
-        if(!rst)
+        if(rst)
         begin
             if((write_en_i) && (write_addr_i != `REG_ADDR_BUS_WIDTH'h0))
             begin
@@ -50,11 +50,10 @@ module REGFILE(
     //read channel 1
     always @ (*)
     begin
-        if(rst)
+        if(!rst)
         begin
             read_data_1_o <= `ZEROWORD;
-        end else if(read_en_1_i && read_addr_1_i == `REG_ADDR_BUS_WIDTH'h0)
-        begin
+        end else if(read_en_1_i && read_addr_1_i == `REG_ADDR_BUS_WIDTH'h0) begin
             read_data_1_o <= `ZEROWORD;
         end else if(read_en_1_i && write_en_i && read_addr_1_i == write_addr_i) begin
             read_data_1_o <= write_data_i;
@@ -68,11 +67,10 @@ module REGFILE(
     //read channel 2
     always @ (*)
     begin
-        if(rst)
+        if(!rst)
         begin
             read_data_2_o <= `ZEROWORD;
-        end else if(read_en_2_i && read_addr_2_i == `REG_ADDR_BUS_WIDTH'h0)
-        begin
+        end else if(read_en_2_i && read_addr_2_i == `REG_ADDR_BUS_WIDTH'h0) begin
             read_data_2_o <= `ZEROWORD;
         end else if(read_en_2_i && write_en_i && read_addr_2_i == write_addr_i) begin
             read_data_2_o <= write_data_i;

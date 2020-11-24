@@ -1,5 +1,4 @@
 `include "../define/global.vh"
-`include "../define/rom.vh"
 
 module IF_ID(
 

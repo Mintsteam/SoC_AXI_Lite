@@ -108,7 +108,7 @@ module EX_MEM(
 			mem_operand_2 <= `ZEROWORD;	
 			mem_exception_type <= `ZEROWORD;
 			mem_is_in_delayslot <= `NOT_IN_DELAY_SLOT;
-			mem_current_inst_addr <= `ZEROWORD;	  				    
+			mem_current_inst_addr <= `ZEROWORD;	  			    
 		end else if(stall[3] == `NOT_STOP) begin
 			mem_reg_write_addr <= ex_reg_write_addr;
 			mem_reg_write_en <= ex_reg_write_en;

@@ -21,6 +21,7 @@ module CP0(
     input wire is_in_delayslot_i,
 
     output reg[`REG_DATA_BUS] read_data_o,
+    output reg[`REG_DATA_BUS] badvaddr_o,
     output reg[`REG_DATA_BUS] count_o,
     output reg[`REG_DATA_BUS] compare_o,
     output reg[`REG_DATA_BUS] status_o,
@@ -31,12 +32,21 @@ module CP0(
     output reg timer_interrupt_o
 
 );
-
-    always @ (posedge clk) 
+    always @(posedge clk)
     begin
         if(rst == `RST_ENABLE)
         begin
             count_o <= `ZEROWORD;
+        end else begin
+            count_o <= count_o + 1;    //每过一个时钟周期，count寄存器自加1
+        end
+    end
+
+    always @(posedge clk) 
+    begin
+        if(rst == `RST_ENABLE)
+        begin
+            badvaddr_o <= `ZEROWORD;
             compare_o <= `ZEROWORD;
             status_o <= 32'b00010000000000000000000000000000;
             cause_o <= `ZEROWORD;
@@ -45,23 +55,11 @@ module CP0(
 			prid_o <= 32'b00000000010011000000000100000010;
             timer_interrupt_o <= `INTERRUPT_NOT_ASSERT;
         end else begin
-            count_o <= count_o + 1;    //每过一个时钟周期，count寄存器自加1
             cause_o[15:10] <= interrupt_i;    //为cause寄存器的中断字段IP[7:2]写入外部中断信号
             if(compare_o != `ZEROWORD && count_o == compare_o)    //若到达时钟中断发生时间
             begin
                 timer_interrupt_o <= `INTERRUPT_ASSERT;    //时钟中断发生，直到有数据写入compare寄存器才结束
             end
-            if(write_en_i == `WRITE_ENABLE)
-            begin
-                case(write_addr_i)
-                    `CP0_REG_COUNT:count_o <= write_data_i;
-                    `CP0_REG_COMPARE:{compare_o, timer_interrupt_o} <= {write_data_i, `INTERRUPT_NOT_ASSERT};    //当有数据写入compare寄存器时，结束时钟中断
-                    `CP0_REG_STATUS:status_o <= write_data_i;
-                    `CP0_REG_EPC:epc_o <= write_data_i;
-                    `CP0_REG_CAUSE:{cause_o[9:8], cause_o[23], cause_o[22]} <= {write_data_i[9:8], write_data_i[23], write_data_i[22]};    //分别写入cause寄存器的IP[1:0],IV，WP字段，且仅有这些字段可写
-                    default:begin end
-                endcase
-            end 
             case (exception_type_i)
 				32'h00000001: begin    //外部中断
 					if(is_in_delayslot_i == `IN_DELAY_SLOT) 
@@ -142,22 +140,40 @@ module CP0(
 			endcase	
         end   
     end
+    
+    always @(posedge clk) 
+    begin
+        if(write_en_i == `WRITE_ENABLE)
+        begin
+            case(write_addr_i)
+                `CP0_REG_COUNT:     count_o <= write_data_i;
+                `CP0_REG_COMPARE:   {compare_o, timer_interrupt_o} <= {write_data_i, `INTERRUPT_NOT_ASSERT};    //当有数据写入compare寄存器时，结束时钟中断
+                `CP0_REG_STATUS:    status_o <= write_data_i;
+                `CP0_REG_EPC:       epc_o <= write_data_i;
+                `CP0_REG_CAUSE:     {cause_o[9:8], cause_o[23], cause_o[22]} <= {write_data_i[9:8], write_data_i[23], write_data_i[22]};    //分别写入cause寄存器的IP[1:0],IV，WP字段，且仅有这些字段可写
+                default:begin end
+            endcase
+        end 
+    end
 
-    always @ (*)    //读取CP0各个寄存器的值
+    always @(*)    //读取CP0各个寄存器的值
     begin
         if(rst == `RST_ENABLE)
         begin
             read_data_o <= `ZEROWORD;
         end else begin
             case(read_addr_i)
-                `CP0_REG_COUNT:read_data_o <= count_o;
-                `CP0_REG_COMPARE:read_data_o <= compare_o;
-                `CP0_REG_STATUS:read_data_o <= status_o;
-                `CP0_REG_EPC:read_data_o <= epc_o;
-                `CP0_REG_CAUSE:read_data_o <= cause_o;
-                `CP0_REG_PRId:read_data_o <= prid_o;
-                `CP0_REG_CONFIG:read_data_o <= config_o;
-                default:begin end
+                `CP0_REG_BadVAddr:  read_data_o <= badvaddr_o;
+                `CP0_REG_COUNT:     read_data_o <= count_o;
+                `CP0_REG_COMPARE:   read_data_o <= compare_o;
+                `CP0_REG_STATUS:    read_data_o <= status_o;
+                `CP0_REG_EPC:       read_data_o <= epc_o;
+                `CP0_REG_CAUSE:     read_data_o <= cause_o;
+                `CP0_REG_PRId:      read_data_o <= prid_o;
+                `CP0_REG_CONFIG:    read_data_o <= config_o;
+                default:begin
+                    read_data_o <= `ZEROWORD;
+                end
             endcase
         end 
     end

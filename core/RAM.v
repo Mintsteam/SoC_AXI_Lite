@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 `include "../define/global.vh"
 `include "../define/regfile.vh"
-`include "../define/ram.vh"
 
 module RAM (
     

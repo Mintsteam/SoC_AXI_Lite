@@ -1,16 +1,16 @@
 `timescale 1ns / 1ps
 `include "../define/global.vh"
 `include "../define/regfile.vh"
-`include "../define/rom.vh"
 
 module core(
 
     input wire clk,
     input wire rst,
     input wire[5:0] interrupt_i,
+    input wire arbiter_stall_req,
 
-    input wire[`REG_DATA_BUS] rom_data_i,
-    output wire[`REG_DATA_BUS] rom_addr_o,
+    input wire[`INST_DATA_BUS] rom_data_i,
+    output wire[`INST_ADDR_BUS] rom_addr_o,
     output wire rom_ce_o,
 
     input wire[`REG_DATA_BUS] ram_read_data_i,
@@ -19,7 +19,12 @@ module core(
     output wire ram_write_en_o,
     output wire[3:0] ram_sel_o,
     output wire ram_ce_o,
-    output wire timer_interrupt_o
+    output wire timer_interrupt_o,
+
+    output wire [31:0] debug_wb_pc,
+    output wire [3:0]  debug_wb_rf_wen,
+    output wire [4:0]  debug_wb_rf_wnum,
+    output wire [31:0] debug_wb_rf_wdata
 
 );
 
@@ -56,7 +61,7 @@ module core(
     wire next_inst_in_delayslot_o;
     wire[`REG_DATA_BUS] ex_inst_data;
     wire [31:0] ex_exception_type;
-    wire[`REG_DATA_BUS] ex_current_inst_addr;
+    wire[`REG_DATA_BUS] ex_current_inst_addr; 
 
     //connect ID_EX to ID
     wire is_in_delayslot_o_from_ID_EX;
@@ -120,30 +125,48 @@ module core(
     wire[4:0] cp0_reg_write_addr_o;
     wire cp0_reg_write_en_o;   
 
-    //connect MEM to CTRL
-    wire[`REG_DATA_BUS] cp0_epc_o;
-
-    //connect MEM_WB to WB
-    wire wb_reg_write_en_i;
-    wire[`REG_ADDR_BUS] wb_reg_write_addr_i;
-    wire[`REG_DATA_BUS] wb_reg_write_data_i;
-    wire wb_hilo_write_en_i;
-    wire[`REG_DATA_BUS] wb_hi_write_data_i;
-    wire[`REG_DATA_BUS] wb_lo_write_data_i;
-
-    //connect MEM_WB to LLbit
-    wire wb_LLbit_write_en;
-    wire wb_LLbit_data;
-
-    //connect MEM_WB to CP0
-    wire[`REG_DATA_BUS] wb_cp0_reg_write_data;
-    wire[4:0] wb_cp0_reg_write_addr;
-    wire wb_cp0_reg_write_en;
+    //connect MEM to CP0 CTRL
     wire[31:0] exception_type_o2;
     wire[`REG_DATA_BUS] current_inst_addr_o2;
     wire is_in_delayslot_o2; 
 
-    //connect ID to REGFIE
+    //connect MEM to CTRL
+    wire[`REG_DATA_BUS] cp0_epc_o;
+
+    //connect MEM_WB to WB
+    wire wb_reg_write_en;
+    wire[`REG_ADDR_BUS] wb_reg_write_addr;
+    wire[`REG_DATA_BUS] wb_reg_write_data;
+    wire wb_hilo_write_en;
+    wire[`REG_DATA_BUS] wb_hi_write_data;
+    wire[`REG_DATA_BUS] wb_lo_write_data;
+    wire wb_LLbit_write_en;
+    wire wb_LLbit_data;
+    wire[`REG_ADDR_BUS] wb_cp0_reg_write_addr;
+    wire[`REG_DATA_BUS] wb_cp0_reg_write_data;
+    wire wb_cp0_reg_write_en;
+    wire[`INST_ADDR_BUS] current_inst_addr;
+
+    //connect WB to REGFILE
+    wire[`REG_ADDR_BUS] wb_reg_write_addr_o;
+    wire[`REG_DATA_BUS] wb_reg_write_data_o;
+    wire wb_reg_write_en_o;
+
+    //connect WB to LLbit
+    wire[`REG_DATA_BUS] wb_LLbit_write_data_o;
+    wire wb_LLbit_write_en_o;
+
+    //connect WB to HILO
+    wire[`REG_DATA_BUS] wb_hi_write_data_o;
+    wire[`REG_DATA_BUS] wb_lo_write_data_o;
+    wire wb_hilo_write_en_o;
+    
+    //connect WB to CP0
+    wire[`REG_DATA_BUS] wb_cp0_reg_write_data_o;
+    wire[4:0] wb_cp0_reg_write_addr_o;
+    wire wb_cp0_reg_write_en_o;
+
+    //connect ID to REGFILE
     wire reg_read_en_1;
     wire reg_read_en_2;
     wire[`REG_DATA_BUS] reg_read_data_1;
@@ -189,6 +212,10 @@ module core(
     wire[`REG_DATA_BUS] config_o;
     wire[`REG_DATA_BUS] prid_o;
 
+    assign debug_wb_rf_wdata = wb_reg_write_data_o;
+    assign debug_wb_rf_wnum = wb_reg_write_addr_o;
+    assign debug_wb_rf_wen = {4{wb_reg_write_en_o}};
+
     PC PC0(
 
         .clk(clk),
@@ -203,13 +230,12 @@ module core(
         .flush(flush),
         .new_pc(new_pc),
         
-        //OUTPUT TO IF_ID
+        //OUTPUT TO IF_ID,RAM
         .pc(pc),
-        .ce(rom_ce_o)
+        .rom_en(rom_ce_o),
+        .rom_addr(rom_addr_o)
 
     );
-
-    assign rom_addr_o = pc;
 
     IF_ID IF_ID0(
 
@@ -218,6 +244,8 @@ module core(
 
         //INPUT FROM PC
         .if_pc(pc),
+
+        //INPUT FROM RAM
         .if_inst(rom_data_i),
 
         //INPUT FROM CTRL
@@ -289,10 +317,10 @@ module core(
         .clk(clk),
         .rst(rst),
 
-        //INPUT FROM MEM_WB
-        .write_en_i(wb_reg_write_en_i),
-        .write_data_i(wb_reg_write_data_i),
-        .write_addr_i(wb_reg_write_addr_i),
+        //INPUT FROM WB
+        .write_en_i(wb_reg_write_en_o),
+        .write_data_i(wb_reg_write_data_o),
+        .write_addr_i(wb_reg_write_addr_o),
 
         //INPUT FROM ID
         .read_en_1_i(reg_read_en_1),
@@ -376,13 +404,13 @@ module core(
         .mem_cp0_reg_write_addr(cp0_reg_write_addr_o),
         .mem_cp0_reg_write_en(cp0_reg_write_en_o),
 
-        //INPUT FROM MEM_WB (forwarding)
-        .wb_hi_write_data_i(wb_hi_write_data_i),
-        .wb_lo_write_data_i(wb_lo_write_data_i),
-        .wb_hilo_write_en_i(wb_hilo_write_en_i),
-        .wb_cp0_reg_write_data(wb_cp0_reg_write_data),
-        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr),
-        .wb_cp0_reg_write_en(wb_cp0_reg_write_en),
+        //INPUT FROM WB (forwarding)
+        .wb_hi_write_data_i(wb_hi_write_data_o),
+        .wb_lo_write_data_i(wb_lo_write_data_o),
+        .wb_hilo_write_en_i(wb_hilo_write_en_o),
+        .wb_cp0_reg_write_data(wb_cp0_reg_write_data_o),
+        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr_o),
+        .wb_cp0_reg_write_en(wb_cp0_reg_write_en_o),
 
         //INPUT FROM EX_MEM
         .count_i(ex_mem_count_o),
@@ -416,7 +444,6 @@ module core(
         .exception_type_o(exception_type_o1),
         .current_inst_addr_o(current_inst_addr_o1),
         .is_in_delayslot_o(is_in_delayslot_o1),
-
         //OUTPUT TO CTRL
         .stall_req(ex_stall_req),
 
@@ -500,10 +527,10 @@ module core(
         .current_inst_addr_i(mem_current_inst_addr),
         .is_in_delayslot_i(mem_is_in_delayslot),
 
-        //INPUT FROM MEM_WB
-        .wb_cp0_reg_write_en(wb_cp0_reg_write_en),
-        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr),
-        .wb_cp0_reg_write_data(wb_cp0_reg_write_data),
+        //INPUT FROM WB (forwarding)
+        .wb_cp0_reg_write_en(wb_cp0_reg_write_en_o),
+        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr_o),
+        .wb_cp0_reg_write_data(wb_cp0_reg_write_data_o),
 
         //INPUT FROM RAM
         .mem_read_data_i(ram_read_data_i),
@@ -567,27 +594,69 @@ module core(
         .mem_cp0_reg_write_data(cp0_reg_write_data_o),
         .mem_cp0_reg_write_addr(cp0_reg_write_addr_o),
         .mem_cp0_reg_write_en(cp0_reg_write_en_o),
+        .mem_pc(current_inst_addr_o2),
 
         //INPUT FROM CTRL
         .stall(stall),
         .flush(flush),
 
         //OUTPUT TO WB
-        .wb_reg_write_data(wb_reg_write_data_i),
-        .wb_reg_write_addr(wb_reg_write_addr_i),
-        .wb_reg_write_en(wb_reg_write_en_i),
-
-        //OUTPUT TO LLbit
+        .wb_reg_write_data(wb_reg_write_data),
+        .wb_reg_write_addr(wb_reg_write_addr),
+        .wb_reg_write_en(wb_reg_write_en),
+        .wb_hi_write_data(wb_hi_write_data),
+        .wb_lo_write_data(wb_lo_write_data),
+        .wb_hilo_write_en(wb_hilo_write_en),
         .wb_LLbit_write_en(wb_LLbit_write_en),
         .wb_LLbit_data(wb_LLbit_data),
-
-        //OUTPUT TO WB,EX(forwarding)
-        .wb_hi_write_data(wb_hi_write_data_i),
-        .wb_lo_write_data(wb_lo_write_data_i),
-        .wb_hilo_write_en(wb_hilo_write_en_i),
         .wb_cp0_reg_write_data(wb_cp0_reg_write_data),
+        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr),
         .wb_cp0_reg_write_en(wb_cp0_reg_write_en),
-        .wb_cp0_reg_write_addr(wb_cp0_reg_write_addr)
+        .wb_pc(current_inst_addr)
+
+    );
+
+    WB WB0(
+
+        //INPUT FROM core
+        .resetn(rst),
+        .stall_req_from_arbiter(arbiter_stall_req),
+
+        //INPUT FROM MEM_WB
+        .wb_reg_write_data_i(wb_reg_write_data),
+        .wb_reg_write_addr_i(wb_reg_write_addr),
+        .wb_reg_write_en_i(wb_reg_write_en),
+        .wb_hi_write_data_i(wb_hi_write_data),
+        .wb_lo_write_data_i(wb_lo_write_data),
+        .wb_hilo_write_en_i(wb_hilo_write_en),
+        .wb_LLbit_write_en_i(wb_LLbit_write_en),
+        .wb_LLbit_data_i(wb_LLbit_data),
+        .wb_cp0_reg_write_data_i(wb_cp0_reg_write_data),
+        .wb_cp0_reg_write_addr_i(wb_cp0_reg_write_addr),
+        .wb_cp0_reg_write_en_i(wb_cp0_reg_write_en),
+        .wb_pc_i(current_inst_addr),
+
+        //OUTPUT TO LLbit
+        .wb_LLbit_write_en_o(wb_LLbit_write_en_o),
+        .wb_LLbit_data_o(wb_LLbit_data_o),
+
+        //OUTPUT TO CP0 EX MEM(forwarding)
+        .wb_cp0_reg_write_data_o(wb_cp0_reg_write_data_o),
+        .wb_cp0_reg_write_addr_o(wb_cp0_reg_write_addr_o),
+        .wb_cp0_reg_write_en_o(wb_cp0_reg_write_en_o),
+
+        //OUTPUT TO HILO EX(forwarding)
+        .wb_hi_write_data_o(wb_hi_write_data_o),
+        .wb_lo_write_data_o(wb_lo_write_data_o),
+        .wb_hilo_write_en_o(wb_hilo_write_en_o),
+
+        //OUTPUT TO REGFILE
+        .wb_reg_write_data_o(wb_reg_write_data_o),
+        .wb_reg_write_addr_o(wb_reg_write_addr_o),
+        .wb_reg_write_en_o(wb_reg_write_en_o),
+
+        //OUTPUT TO core
+        .wb_pc_o(debug_wb_pc)
 
     );
 
@@ -596,10 +665,10 @@ module core(
         .clk(clk),
         .rst(rst),
 
-        //INPUT FROM MEM_WB
-        .hi_write_data_i(wb_hi_write_data_i),
-        .lo_write_data_i(wb_lo_write_data_i),
-        .hilo_write_en(wb_hilo_write_en_i),
+        //INPUT FROM WB
+        .hi_write_data_i(wb_hi_write_data_o),
+        .lo_write_data_i(wb_lo_write_data_o),
+        .hilo_write_en(wb_hilo_write_en_o),
 
         //OUTPUT TO EX
         .hi_read_data_o(hi_read_data_o),
@@ -610,6 +679,7 @@ module core(
     CTRL CTRL0(
 
         .rst(rst),
+        .arbiter_stall_req(arbiter_stall_req),
 
         //INPUT FROM ID
         .id_stall_req(id_stall_req),
@@ -657,9 +727,9 @@ module core(
         .rst(rst),
         .flush(flush),
 
-        //INPUT FROM MEM_WB
-        .LLbit_write_en(wb_LLbit_write_en),
-        .LLbit_i(wb_LLbit_data),
+        //INPUT FROM WB
+        .LLbit_write_en(wb_LLbit_write_en_o),
+        .LLbit_i(wb_LLbit_data_o),
 
         //OUTPUT TO MEM
         .LLbit_o(LLbit_o)
@@ -678,10 +748,10 @@ module core(
         .current_inst_addr_i(current_inst_addr_o2),
         .is_in_delayslot_i(is_in_delayslot_o2),
         
-        //INPUT FROM MEM_WB
-        .write_data_i(wb_cp0_reg_write_data),
-        .write_addr_i(wb_cp0_reg_write_addr),
-        .write_en_i(wb_cp0_reg_write_en),
+        //INPUT FROM WB
+        .write_data_i(wb_cp0_reg_write_data_o),
+        .write_addr_i(wb_cp0_reg_write_addr_o),
+        .write_en_i(wb_cp0_reg_write_en_o),
         .read_addr_i(cp0_reg_read_addr_o),
 
         //OUTPUT TO EX

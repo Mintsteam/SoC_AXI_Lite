@@ -1,6 +1,5 @@
 `timescale 1ns / 1ps
 `include "../define/global.vh"
-`include "../define/rom.vh"
 
 module ROM(
 

@@ -7,6 +7,9 @@ module MEM_WB(
     input wire clk,
     input wire rst,
 
+	input wire[`INST_ADDR_BUS] mem_pc,
+	output reg[`INST_ADDR_BUS] wb_pc,
+
     input wire[`REG_DATA_BUS] mem_reg_write_data,
     input wire[`REG_ADDR_BUS] mem_reg_write_addr,
     input wire mem_reg_write_en,
@@ -58,6 +61,7 @@ module MEM_WB(
 			wb_cp0_reg_write_en <= `WRITE_DISABLE;
 			wb_cp0_reg_write_addr <= 5'b00000;
 			wb_cp0_reg_write_data <= `ZEROWORD;
+			wb_pc <= `ZEROWORD;
 		end else if(flush == 1'b1) begin
 			wb_reg_write_addr <= `NOP_REG_ADDR;
 			wb_reg_write_en <= `WRITE_DISABLE;
@@ -70,6 +74,7 @@ module MEM_WB(
 			wb_cp0_reg_write_en <= `WRITE_DISABLE;
 			wb_cp0_reg_write_addr <= 5'b00000;
 			wb_cp0_reg_write_data <= `ZEROWORD;
+			wb_pc <= `ZEROWORD;
 		end else if(stall[4] == `STOP && stall[5] == `NOT_STOP) begin
 			wb_reg_write_addr <= `NOP_REG_ADDR;
 			wb_reg_write_en <= `WRITE_DISABLE;
@@ -82,6 +87,7 @@ module MEM_WB(
 			wb_cp0_reg_write_en <= `WRITE_DISABLE;
 			wb_cp0_reg_write_addr <= 5'b00000;
 			wb_cp0_reg_write_data <= `ZEROWORD;	  
+			wb_pc <= `ZEROWORD;
 		end else if(stall[4] == `NOT_STOP) begin
 			wb_reg_write_addr <= mem_reg_write_addr;
 			wb_reg_write_en <= mem_reg_write_en;
@@ -94,6 +100,7 @@ module MEM_WB(
 			wb_cp0_reg_write_en <= mem_cp0_reg_write_en;
 			wb_cp0_reg_write_addr <= mem_cp0_reg_write_addr;
 			wb_cp0_reg_write_data <= mem_cp0_reg_write_data;	
+			wb_pc <= mem_pc;
 		end    
 	end      
 
