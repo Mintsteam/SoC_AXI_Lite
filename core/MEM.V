@@ -62,6 +62,7 @@ module MEM(
 	output reg cp0_reg_write_en_o,
 	output reg[4:0] cp0_reg_write_addr_o,
 	output reg[`REG_DATA_BUS] cp0_reg_write_data_o,
+	output reg[`REG_DATA_BUS] cp0_badvaddr_write_data_o,
 
 	output reg[31:0] exception_type_o,
 	output wire[`REG_DATA_BUS] cp0_epc_o,
@@ -77,6 +78,10 @@ module MEM(
 	reg[`REG_DATA_BUS] cp0_status;
 	reg[`REG_DATA_BUS] cp0_cause;
 	reg[`REG_DATA_BUS] cp0_epc;
+	reg exception_is_adel;
+	reg exception_is_ades;
+	reg mem_read_en;
+	reg mem_write_en;
 
 	assign zero32 = `ZEROWORD;
 	
@@ -124,6 +129,45 @@ module MEM(
 		end
 	end
 
+	always @(*)
+	begin
+		if(rst == `RST_ENABLE)
+		begin
+			mem_read_en <= 1'b0;
+			mem_write_en <= 1'b0;
+		end else if(mem_we) begin
+			mem_read_en <= 1'b0;
+			mem_write_en <= 1'b1;
+		end else if(!mem_we) begin
+			mem_read_en <= 1'b1;
+			mem_write_en <= 1'b0;
+		end else begin
+			mem_read_en <= 1'b0;
+			mem_write_en <= 1'b0;
+		end
+	end
+
+	always @(*) 
+	begin
+        if(rst == `RST_ENABLE) 
+		begin
+            {exception_is_adel, exception_is_ades} <= 2'b0;
+            cp0_badvaddr_write_data_o <= 0;
+        end else if (current_inst_addr_i[1:0]) begin   // inst addr
+            {exception_is_adel, exception_is_ades} <= 2'b10;
+            cp0_badvaddr_write_data_o <= current_inst_addr_i;
+        end else if (mem_sel_o == 4'b0011 && mem_addr_i[0]) begin   // half word
+            {exception_is_adel, exception_is_ades} <= {mem_read_en, mem_write_en};
+            cp0_badvaddr_write_data_o <= mem_addr_i;
+        end else if (mem_sel_o == 4'b1111 && mem_addr_i[1:0]) begin   // word
+            {exception_is_adel, exception_is_ades} <= {mem_read_en, mem_write_en};
+            cp0_badvaddr_write_data_o <= mem_addr_i;
+        end else begin
+            {exception_is_adel, exception_is_ades} <= 2'b0;
+            cp0_badvaddr_write_data_o <= 0;
+        end
+    end
+
 	always @(*)  //最终确定异常原因
 	begin   
 		if(rst == `RST_ENABLE) 
@@ -135,10 +179,10 @@ module MEM(
 			begin
 				if(((cp0_cause[15:8] & (cp0_status[15:8])) != 8'h00) && (cp0_status[1] == 1'b0) && (cp0_status[0] == 1'b1)) begin //若status和cause关于外部中断的IM[7:0]和IP[7:0]有相同位置均不为0的项,且IE=1,EXL=0
 					exception_type_o <= 32'h00000001;       //interrupt
-				end else if(exception_type_i[8] == 1'b1) begin
-			  		exception_type_o <= 32'h00000004;		//AdEL
-				end else if(exception_type_i[8] == 1'b1) begin
-			  		exception_type_o <= 32'h00000005;		//AdES
+				end else if(exception_is_adel) begin
+					exception_type_o <= 32'h00000004;       //AdEL
+				end else if(exception_is_ades) begin
+					exception_type_o <= 32'h00000005;       //AdES
 				end else if(exception_type_i[8] == 1'b1) begin
 			  		exception_type_o <= 32'h00000008;       //syscall
 				end else if(exception_type_i[9] == 1'b1) begin
@@ -199,7 +243,7 @@ module MEM(
 			hilo_write_en_o <= hilo_write_en_i;	
 			mem_addr_o <= `ZEROWORD;
 			mem_we <= `WRITE_DISABLE;
-			mem_sel_o <= 4'b1111;
+			mem_sel_o <= 4'b0000;
 			mem_write_data_o <= `ZEROWORD;
 			mem_ce_o <= `CHIP_DISABLE;
 			LLbit_write_en_o <= 1'b0;

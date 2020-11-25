@@ -19,6 +19,7 @@ module CP0(
     input wire[31:0] exception_type_i,
     input wire[`REG_DATA_BUS] current_inst_addr_i,
     input wire is_in_delayslot_i,
+    input wire[31:0] badvaddr_write_data_i,
 
     output reg[`REG_DATA_BUS] read_data_o,
     output reg[`REG_DATA_BUS] badvaddr_o,
@@ -32,6 +33,7 @@ module CP0(
     output reg timer_interrupt_o
 
 );
+
     always @(posedge clk)
     begin
         if(rst == `RST_ENABLE)
@@ -72,6 +74,38 @@ module CP0(
 					end
 					status_o[1] <= 1'b1;    //设置EXL字段为1,禁止中断
 					cause_o[6:2] <= 5'b00000;    //设置ExcCode字段，表示异常原因为外部中断
+				end
+                32'h00000004: begin    //AdEL
+					if(status_o[1] == 1'b0)    //若不处于异常级
+                    begin
+						if(is_in_delayslot_i == `IN_DELAY_SLOT) 
+                        begin
+							epc_o <= current_inst_addr_i - 4;
+							cause_o[31] <= 1'b1;
+						end else begin
+					  	    epc_o <= current_inst_addr_i;
+					  	    cause_o[31] <= 1'b0;
+						end
+					end
+                    badvaddr_o <= current_inst_addr_i;
+					status_o[1] <= 1'b1;
+					cause_o[6:2] <= 5'b00100;			
+				end
+                32'h00000005: begin    //AdES
+					if(status_o[1] == 1'b0)    //若不处于异常级
+                    begin
+						if(is_in_delayslot_i == `IN_DELAY_SLOT) 
+                        begin
+							epc_o <= current_inst_addr_i - 4;
+							cause_o[31] <= 1'b1;
+						end else begin
+					  	    epc_o <= current_inst_addr_i;
+					  	    cause_o[31] <= 1'b0;
+						end
+					end
+                    badvaddr_o <= current_inst_addr_i;
+					status_o[1] <= 1'b1;
+					cause_o[6:2] <= 5'b00101;			
 				end
 				32'h00000008: begin    //系统调用异常syscall
 					if(status_o[1] == 1'b0)    //若不处于异常级

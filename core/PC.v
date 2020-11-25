@@ -25,24 +25,13 @@ module PC(
 
     assign rom_en = rst;    //重置结束立即使能rom
 
-    reg[`INST_ADDR_BUS] next_pc;
+    assign rom_addr = pc;    //指令所在地址
 
-    reg[`INST_ADDR_BUS] rom_addr_temp;
-
-    /*
-    always @(posedge clk)
+    always @(posedge clk) 
     begin
-        if(rom_en)
+        if(rst == `RST_ENABLE)
         begin
-            rom_addr <= pc;
-        end
-    end
-
-    always @(posedge clk)
-    begin
-        if(!rst)
-        begin
-            pc <= `INIT_PC; 
+            pc <= `INIT_PC;
         end else if(flush == 1'b1) begin
             pc <= new_pc;
         end else if(stall[0] == `NOT_STOP) begin
@@ -52,46 +41,6 @@ module PC(
             end else begin
                 pc <= pc + 4'h4;
             end
-        end
-    end
-    */
-
-    always @(*) 
-    begin
-        if(!rom_en)
-        begin
-            rom_addr_temp <= `INIT_PC;  //默认从32'hbfc00000开始执行指令
-        end else begin
-            rom_addr_temp <= next_pc;
-        end
-    end
-
-    assign rom_addr = pc;    //指令所在地址
-
-    always @(*) 
-    begin
-        if(flush == 1'b1)
-        begin
-            next_pc <= new_pc;
-        end else if(stall[0] == `NOT_STOP) begin
-            if(branch_flag_i == `BRANCH)
-            begin
-                next_pc <= branch_target_addr_i;
-            end else begin
-                next_pc <= pc + 4'h4;
-            end
-        end else begin
-            next_pc <= pc;
-        end
-    end
-
-    always @(posedge clk)   //PC
-    begin
-        if(!rst)
-        begin
-            pc <= `INIT_PC;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ;
-        end else begin
-            pc <= next_pc;
         end
     end
 

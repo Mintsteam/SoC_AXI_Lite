@@ -129,6 +129,7 @@ module core(
     wire[31:0] exception_type_o2;
     wire[`REG_DATA_BUS] current_inst_addr_o2;
     wire is_in_delayslot_o2; 
+    wire[31:0] cp0_badvaddr_write_data_o;
 
     //connect MEM to CTRL
     wire[`REG_DATA_BUS] cp0_epc_o;
@@ -571,6 +572,7 @@ module core(
         .exception_type_o(exception_type_o2),
         .current_inst_addr_o(current_inst_addr_o2),
         .is_in_delayslot_o(is_in_delayslot_o2),
+        .cp0_badvaddr_write_data_o(cp0_badvaddr_write_data_o),
 
         //OUTPUT TO CTRL
         .cp0_epc_o(cp0_epc_o)
@@ -747,6 +749,7 @@ module core(
         .exception_type_i(exception_type_o2),
         .current_inst_addr_i(current_inst_addr_o2),
         .is_in_delayslot_i(is_in_delayslot_o2),
+        .badvaddr_write_data_i(cp0_badvaddr_write_data_o),
         
         //INPUT FROM WB
         .write_data_i(wb_cp0_reg_write_data_o),
